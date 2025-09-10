@@ -142,3 +142,5 @@ CORS_ALLOW_CREDENTIALS = True
 
 # --- SSL/проксирование (для прода за nginx) ---
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost")

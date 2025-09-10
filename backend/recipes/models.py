@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
 from django.db import models
-from django.db.models.functions import Lower   # ✦ для функционального индекса
+from django.db.models.functions import Lower  # ✦ для функционального индекса
 
 User = settings.AUTH_USER_MODEL
 
@@ -96,7 +96,8 @@ class RecipeIngredient(models.Model):
 
 class Favorite(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorites")
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name="favorited_by")
+    # ⬇⬇⬇ привели related_name к тому, что использует RecipeViewSet (favorites__user)
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name="favorites")
 
     class Meta:
         verbose_name = "Избранное"
@@ -111,7 +112,8 @@ class Favorite(models.Model):
 
 class ShoppingCart(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="cart")
-    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name="in_carts")
+    # ⬇⬇⬇ привели related_name к тому, что использует RecipeViewSet (shoppingcarts__user)
+    recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE, related_name="shoppingcarts")
 
     class Meta:
         verbose_name = "Покупка"
@@ -125,8 +127,10 @@ class ShoppingCart(models.Model):
 
 
 class Subscription(models.Model):
+    # обратная связь от подписчика по-прежнему доступна как user.follows (если где-то это нужно)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="follows", verbose_name="Подписчик")
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="followers", verbose_name="Автор")
+    # ⬇⬇⬇ ключевое: привели related_name к subscriptions_author — так фильтрует UserViewSet.subscriptions
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="subscriptions_author", verbose_name="Автор")
 
     class Meta:
         verbose_name = "Подписка"

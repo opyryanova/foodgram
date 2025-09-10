@@ -1,7 +1,9 @@
 # backend/api/views.py
 from collections import defaultdict
+import secrets
 
-from django.db.models import Exists, OuterRef, Sum
+from django.db.models import Exists, OuterRef, Sum, F, Value
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -11,7 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
-from api.permissions import IsAuthorOrReadOnly  # добавим в следующем шаге
+from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (
     IngredientSerializer,
     RecipeSerializer,
@@ -27,10 +29,11 @@ from recipes.models import (
     Favorite,
     Ingredient,
     Recipe,
-    RecipeIngredient,   # имя through-модели — как в нашем serializers.py
+    RecipeIngredient,   # through-модель
     ShoppingCart,
     Subscription,
     Tag,
+    ShortLink,          # ← понадобится для коротких ссылок
 )
 from users.models import User, Profile
 
@@ -93,7 +96,7 @@ class UserViewSet(DjoserUserViewSet):
             permission_classes=[IsAuthenticated], url_path='subscribe')
     def subscribe(self, request, *args, **kwargs):
         """
-        Не полагаемся на имя URL-параметра (id/pk) — берём автора через self.get_object().
+        Не полагаемся на имя URL-параметра (id/pk) — берем автора через self.get_object().
         """
         author = self.get_object()
 
@@ -156,6 +159,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     - Список/детально/создать/обновить/удалить рецепт
     - POST/DELETE /recipes/{id}/favorite/
     - POST/DELETE /recipes/{id}/shopping_cart/
+    - GET /recipes/{id}/get-link/ — получить/создать короткую ссылку
     - GET /recipes/download_shopping_cart/ — агрегированный список покупок
     Поддержка фильтров: ?tags=slug1&tags=slug2&author=<id>&is_favorited=1&is_in_shopping_cart=1
     """
@@ -265,20 +269,62 @@ class RecipeViewSet(viewsets.ModelViewSet):
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    # --- get-link ---
+    @action(detail=True, methods=['get'],
+            permission_classes=[IsAuthenticated], url_path='get-link')
+    def get_link(self, request, pk=None):
+        """
+        Возвращает короткую ссылку на рецепт. Если ссылки нет — создает.
+        Формат ответа: {"short-link": "<абсолютная ссылка>"}
+        """
+        recipe = get_object_or_404(Recipe, pk=pk)
+
+        # Пытаемся найти существующую короткую ссылку
+        sl = getattr(recipe, 'shortlink', None)
+
+        # Если нет — создаем с уникальным кодом
+        if sl is None:
+            # Генерация небольшого URL-safe кода (8 символов ~ 48 бит)
+            # и защита от редкого коллизии через цикл.
+            for _ in range(5):
+                code = secrets.token_urlsafe(6)[:8]
+                if not ShortLink.objects.filter(code=code).exists():
+                    sl = ShortLink.objects.create(recipe=recipe, code=code)
+                    break
+            else:
+                return Response(
+                    {'errors': 'Не удалось сгенерировать короткую ссылку.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        # Собираем абсолютный URL вида http://host/s/<code>
+        short_url = request.build_absolute_uri(f"/s/{sl.code}")
+        return Response({"short-link": short_url}, status=status.HTTP_200_OK)
+
     # --- download_shopping_cart ---
     @action(detail=False, methods=['get'],
             permission_classes=[IsAuthenticated], url_path='download_shopping_cart')
     def download_shopping_cart(self, request):
         """
         Агрегируем ингредиенты по всем рецептам из корзины текущего пользователя.
-        Формат: "Название — сумма ЕИ".
+        Учитываем число порций рецепта (recipe.servings, по умолчанию 1).
+        Формат строки: "Название — сумма ЕИ".
         """
-        items = RecipeIngredient.objects.filter(
-            recipe__shoppingcarts__user=request.user
-        ).values(
-            'ingredient__name',
-            'ingredient__measurement_unit'
-        ).annotate(total=Sum('amount')).order_by('ingredient__name')
+        items = (
+            RecipeIngredient.objects
+            .filter(recipe__shoppingcarts__user=request.user)
+            .values(
+                'ingredient__name',
+                'ingredient__measurement_unit'
+            )
+            .annotate(
+                # total = sum(amount * coalesce(recipe.servings, 1))
+                total=Sum(
+                    F('amount') * Coalesce(F('recipe__servings'), Value(1))
+                )
+            )
+            .order_by('ingredient__name')
+        )
 
         lines = []
         for it in items:

@@ -1,17 +1,71 @@
-version: '3.3'
-services:
+version: '3.8'
 
+services:
+  # 1) Сборка фронта: собирает build и складывает его в ../frontend/build
   frontend:
     container_name: foodgram-front
     build: ../frontend
     volumes:
       - ../frontend/:/app/result_build/
+
+  # 2) Бэкенд: Django + Gunicorn
+  backend:
+    container_name: foodgram-back
+    build:
+      context: ../backend
+    env_file:
+      - ../backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    # Миграции и статика перед стартом — удобно для дев-окружения
+    command: >
+      sh -c "
+      python manage.py collectstatic --noinput &&
+      python manage.py migrate &&
+      gunicorn foodgram.wsgi:application --bind 0.0.0.0:8000
+      "
+    expose:
+      - "8000"
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/static
+
+  # 3) База данных: Postgres
+  db:
+    container_name: foodgram-db
+    image: postgres:13-alpine
+    env_file:
+      - ../backend/.env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # 4) Прокси: отдает фронт, а на следующем шаге настроим /api в бэкенд
   nginx:
     container_name: foodgram-proxy
     image: nginx:1.25.4-alpine
     ports:
       - "80:80"
+    depends_on:
+      - frontend
+      - backend
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ../frontend/build:/usr/share/nginx/html/
       - ../docs/:/usr/share/nginx/html/api/docs/
+      # На следующем шаге (после правки nginx.conf) можно будет отдать медиа напрямую:
+      # - media_data:/usr/share/nginx/html/media
+
+volumes:
+  pg_data:
+  media_data:
+  static_data:

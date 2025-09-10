@@ -17,7 +17,7 @@ from recipes.models import (
 )
 from users.models import User, Profile
 
-# небольшие константы (минимумы)
+# Минимальные значения
 MIN_AMOUNT = 1
 MIN_COOKING_TIME = 1
 
@@ -46,6 +46,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_avatar(self, obj):
         request = self.context.get("request")
+        # Аватар хранится в Profile
         if hasattr(obj, "profile") and obj.profile.avatar:
             return (
                 request.build_absolute_uri(obj.profile.avatar.url)
@@ -77,6 +78,7 @@ class AvatarSerializer(serializers.ModelSerializer):
         fields = ("avatar",)
 
     def update(self, instance, validated_data):
+        # При замене старый файл удаляем
         if instance.avatar:
             instance.avatar.delete(save=False)
         instance.avatar = validated_data["avatar"]
@@ -120,7 +122,7 @@ class RecipeIngredientWriteSerializer(serializers.Serializer):
     """Передача ингредиента при создании/редактировании рецепта."""
     id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
     amount = serializers.IntegerField(
-        validators=[MinValueValidator(MIN_AMOUNT, f"Количество ≥ {MIN_AMOUNT}.")]
+        validators=[MinValueValidator(MIN_AMOUNT, f"Количество должно быть ≥ {MIN_AMOUNT}.")]
     )
 
 
@@ -137,14 +139,13 @@ class ShortRecipeSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         request = self.context.get("request")
-        return (
-            request.build_absolute_uri(obj.image.url)
-            if obj.image and request else (obj.image.url if obj.image else None)
-        )
+        if obj.image:
+            return request.build_absolute_uri(obj.image.url) if request else obj.image.url
+        return None
 
 
 class RecipeReadSerializer(serializers.ModelSerializer):
-    """Просмотр рецепта (read). Возвращаем servings для фронта."""
+    """Просмотр рецепта (read)."""
     author = UserSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     ingredients = serializers.SerializerMethodField()
@@ -158,7 +159,7 @@ class RecipeReadSerializer(serializers.ModelSerializer):
             "id", "tags", "author", "ingredients",
             "is_favorited", "is_in_shopping_cart",
             "name", "image", "text", "cooking_time",
-            "servings",  # ← добавлено для фронта
+            "servings",  # счетчик порций — для корректных калькуляций на фронте
         )
         read_only_fields = fields
 
@@ -169,6 +170,7 @@ class RecipeReadSerializer(serializers.ModelSerializer):
                 .select_related("ingredient"))
 
     def get_ingredients(self, obj):
+        # Возвращаем ровно тот формат, что ожидает фронт/спека (amount — итоговое количество для рецепта)
         data = []
         for ri in self._through_qs(obj):
             ing = ri.ingredient
@@ -196,10 +198,9 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         request = self.context.get("request")
-        return (
-            request.build_absolute_uri(obj.image.url)
-            if obj.image and request else (obj.image.url if obj.image else None)
-        )
+        if obj.image:
+            return request.build_absolute_uri(obj.image.url) if request else obj.image.url
+        return None
 
 
 class RecipeWriteSerializer(serializers.ModelSerializer):
@@ -209,9 +210,9 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     ingredients = RecipeIngredientWriteSerializer(many=True)
     image = Base64ImageField(required=True)
     cooking_time = serializers.IntegerField(
-        validators=[MinValueValidator(MIN_COOKING_TIME, f"Минимум {MIN_COOKING_TIME} минут.")]
+        validators=[MinValueValidator(MIN_COOKING_TIME, f"Время должно быть ≥ {MIN_COOKING_TIME} минут.")]
     )
-    # оставляем как опциональный атрибут рецепта
+    # Счетчик порций — опционально, но если прислали, проверим разумные рамки
     servings = serializers.IntegerField(min_value=1, max_value=50, required=False)
 
     class Meta:
@@ -278,7 +279,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         return instance
 
     def to_representation(self, instance):
-        # единый формат ответа
+        # Единый формат ответа
         return RecipeReadSerializer(instance, context=self.context).data
 
 
@@ -295,18 +296,16 @@ class SubscriptionSerializer(UserSerializer):
     def get_recipes(self, obj):
         request = self.context.get("request")
         qs = obj.recipes.all()
-        limit = None
-        if request:
-            raw = request.query_params.get("recipes_limit")
-            if raw:
-                try:
-                    limit = int(raw)
-                    if limit < 0:
-                        raise ValueError
-                except (ValueError, TypeError):
-                    raise ValidationError("recipes_limit должен быть неотрицательным целым числом.")
-        if limit is not None:
-            qs = qs[:limit]
+        # recipes_limit — необязательный параметр
+        raw = request.query_params.get("recipes_limit") if request else None
+        if raw is not None:
+            try:
+                limit = int(raw)
+                if limit < 0:
+                    raise ValueError
+                qs = qs[:limit]
+            except (ValueError, TypeError):
+                raise ValidationError("recipes_limit должен быть неотрицательным целым числом.")
         return ShortRecipeSerializer(qs, many=True, context=self.context).data
 
     def to_representation(self, instance):
