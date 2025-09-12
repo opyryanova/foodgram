@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:13-alpine
+    container_name: foodgram-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-foodgram}
+      POSTGRES_USER: ${POSTGRES_USER:-foodgram}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-foodgram}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: always
+
+  backend:
+    image: pyryanova/foodgram_backend:latest
+    container_name: foodgram-back
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      # на всякий случай, если не задано в .env:
+      STATIC_ROOT: /app/static
+      MEDIA_ROOT: /app/media
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - static_data:/app/static
+      - media_data:/app/media
+    expose:
+      - "8000"
+    restart: always
+    command: >
+      sh -c "
+      python manage.py migrate &&
+      python manage.py collectstatic --noinput &&
+      gunicorn --bind 0.0.0.0:8000 foodgram.wsgi
+      "
+
+  gateway:
+    image: pyryanova/foodgram_gateway:latest
+    container_name: foodgram-gateway
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    volumes:
+     - ./infra/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_data:/static:ro
+      - media_data:/media:ro
+    restart: always
+
+volumes:
+  pg_data:
+  static_data:
+  media_data:
