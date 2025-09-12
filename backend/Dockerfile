@@ -1,23 +1,21 @@
-FROM python:3.13-slim
+# Используем стабильный Debian bookworm, чтобы избежать проблем apt у trixie
+FROM python:3.12-slim-bookworm
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-    libssl-dev \
-    libffi-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN python3 -m ensurepip && \
-    pip3 install --upgrade pip setuptools
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt --no-cache-dir
+# Сначала ставим зависимости — кэшируется
+COPY requirements.txt ./
+RUN python -m pip install --upgrade pip setuptools wheel \
+ && pip install -r requirements.txt
 
+# Затем копируем весь проект
 COPY . .
 
 EXPOSE 8000
 
+# Запуск по умолчанию (может быть переопределён в docker-compose)
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "foodgram.wsgi"]

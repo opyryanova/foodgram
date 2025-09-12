@@ -1,4 +1,3 @@
-# backend/recipes/admin.py
 from django.contrib import admin
 from django.db.models import Count
 
@@ -34,17 +33,12 @@ class RecipeIngredientInline(admin.TabularInline):
 class RecipeAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "author", "favorites_count", "pub_date")
     search_fields = ("name", "author__username", "author__email")
-    list_filter = ("tags",)
+    list_filter = ("tags", "author")
     inlines = (RecipeIngredientInline,)
-    readonly_fields = ()
+    readonly_fields = ("pub_date",)
     ordering = ("-pub_date",)
 
     def get_queryset(self, request):
-        """
-        ВАЖНО: используем актуальные related_name:
-        - favorites         (раньше было favorited_by)
-        - shoppingcarts     (раньше было in_carts)
-        """
         qs = (super().get_queryset(request)
               .select_related("author")
               .prefetch_related(
@@ -53,12 +47,10 @@ class RecipeAdmin(admin.ModelAdmin):
                   "shoppingcarts",
                   "recipe_ingredients__ingredient",
               ))
-        # Аннотация количества добавлений в избранное — удобно в списке
         return qs.annotate(favorites_cnt=Count("favorites", distinct=True))
 
     @admin.display(description="В избранном")
     def favorites_count(self, obj):
-        # Используем аннотацию, если есть; иначе считаем по необходимости
         return getattr(obj, "favorites_cnt", obj.favorites.count())
 
 
@@ -66,21 +58,25 @@ class RecipeAdmin(admin.ModelAdmin):
 class FavoriteAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "recipe")
     search_fields = ("user__username", "recipe__name")
+    list_filter = ("user",)
 
 
 @admin.register(ShoppingCart)
 class ShoppingCartAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "recipe")
     search_fields = ("user__username", "recipe__name")
+    list_filter = ("user",)
 
 
 @admin.register(Subscription)
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "author")
     search_fields = ("user__username", "author__username")
+    list_filter = ("user", "author")
 
 
 @admin.register(ShortLink)
 class ShortLinkAdmin(admin.ModelAdmin):
     list_display = ("id", "recipe", "code")
     search_fields = ("code", "recipe__name")
+    list_filter = ("recipe",)

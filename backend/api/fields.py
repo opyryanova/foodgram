@@ -1,21 +1,24 @@
 # backend/api/fields.py
+from __future__ import annotations
+
 import base64
 import binascii
-import imghdr
 import uuid
+from io import BytesIO
 from typing import Any
 
 from django.core.files.base import ContentFile
 from rest_framework import serializers
+from PIL import Image, UnidentifiedImageError
 
 
 class SmartImageField(serializers.ImageField):
     """
     Поле, которое понимает:
       - обычные файлы (multipart/form-data),
-      - строки в формате base64 (в т.ч. data URI: data:image/png;base64,....)
+      - строки в формате base64 (в т.ч. data URI: data:image/png;base64,...)
 
-    Использование: так же, как обычный ImageField в сериализаторах.
+    Использование: как обычный ImageField в сериализаторах.
     """
 
     default_error_messages = {
@@ -24,48 +27,53 @@ class SmartImageField(serializers.ImageField):
         "not_base64": "Строка не является валидным base64-изображением.",
     }
 
-    # допустимые расширения для безопасности
-    _ALLOWED_EXTS = {"jpeg", "jpg", "png", "gif", "webp"}
+    # Разрешённые форматы (по данным PIL.Image.format)
+    _ALLOWED_FORMATS = {"jpeg", "jpg", "png", "gif", "webp"}
 
     def to_internal_value(self, data: Any):
         # 1) Если пришёл уже файл -> отдадим родителю
         if hasattr(data, "read"):
             return super().to_internal_value(data)
 
-        # 2) Если пришла строка — пытаемся распарсить base64
+        # 2) Если пришла строка — пытаемся распарсить base64 (data URI или «голый» base64)
         if isinstance(data, str):
             data = data.strip()
+            if not data:
+                self.fail("invalid_image")
 
-            # data URI формат: data:image/png;base64,AAAA...
+            # Выделяем чистую base64-часть
             if data.startswith("data:image"):
                 try:
-                    header, b64data = data.split(",", 1)
+                    _, b64data = data.split(",", 1)
                 except ValueError:
                     self.fail("not_base64")
-
-                try:
-                    decoded_file = base64.b64decode(b64data)
-                except (TypeError, binascii.Error):
-                    self.fail("not_base64")
-
+                raw_b64 = b64data.strip()
             else:
-                # «голый» base64 без заголовка
-                try:
-                    decoded_file = base64.b64decode(data)
-                except (TypeError, binascii.Error):
-                    self.fail("not_base64")
+                raw_b64 = data
 
-            # определяем расширение
-            file_ext = imghdr.what(None, decoded_file) or "jpg"
-            if file_ext == "jpeg":
-                # имghdr возвращает 'jpeg' для jpg
-                file_ext = "jpg"
+            # Декодирование base64 с валидацией
+            try:
+                decoded_bytes = base64.b64decode(raw_b64, validate=True)
+            except (binascii.Error, ValueError):
+                self.fail("not_base64")
 
-            if file_ext.lower() not in self._ALLOWED_EXTS:
+            # Проверяем, что это действительно изображение, и узнаём формат через Pillow
+            try:
+                with Image.open(BytesIO(decoded_bytes)) as img:
+                    fmt = (img.format or "").lower()
+            except (UnidentifiedImageError, OSError):
+                self.fail("invalid_image")
+
+            # Нормализуем jpeg -> jpg
+            if fmt == "jpeg":
+                fmt = "jpg"
+
+            if fmt not in self._ALLOWED_FORMATS:
                 self.fail("invalid_type")
 
-            file_name = f"{uuid.uuid4().hex}.{file_ext}"
-            content = ContentFile(decoded_file, name=file_name)
+            # Создаём временный файл для DRF
+            file_name = f"{uuid.uuid4().hex}.{fmt}"
+            content = ContentFile(decoded_bytes, name=file_name)
             return super().to_internal_value(content)
 
         # 3) Иное — не поддерживаем
