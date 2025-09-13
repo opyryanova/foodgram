@@ -8,15 +8,8 @@ from django.dispatch import receiver
 
 
 class User(AbstractUser):
-    """
-    Кастомный пользователь на базе AbstractUser.
-    Улучшения:
-    - email обязателен и уникален (в т.ч. с учётом регистра);
-    - нормализуем email в нижний регистр перед сохранением.
-    """
     email = models.EmailField(
         "Email",
-        unique=True,
         blank=False,
         null=False,
         validators=[EmailValidator()],
@@ -28,11 +21,12 @@ class User(AbstractUser):
         verbose_name_plural = "Пользователи"
         ordering = ["id"]
         constraints = [
-            # уникальность email без учёта регистра
             models.UniqueConstraint(
                 Lower("email"),
                 name="user_email_ci_unique",
-                violation_error_message="Пользователь с таким email уже существует.",
+                violation_error_message=(
+                    "Пользователь с таким email уже существует."
+                ),
             ),
         ]
 
@@ -41,16 +35,11 @@ class User(AbstractUser):
             self.email = self.email.strip().lower()
         return super().save(*args, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.username or self.email
 
 
 class Profile(models.Model):
-    """
-    Профиль пользователя: аватар и OneToOne-связь с User.
-    Совместимо с сериализаторами и вьюхами:
-    - поле avatar читается в UserSerializer как абсолютный URL.
-    """
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -68,15 +57,12 @@ class Profile(models.Model):
         verbose_name = "Профиль"
         verbose_name_plural = "Профили"
 
-    def __str__(self):
-        return f"Профиль {self.user.username or self.user.email}"
+    def __str__(self) -> str:
+        name = self.user.username or self.user.email
+        return f"Профиль {name}"
 
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
-    """
-    Автосоздание Profile при регистрации.
-    Совместимо с нашим UserCreateSerializer (дополнительно не мешает).
-    """
     if created:
         Profile.objects.get_or_create(user=instance)

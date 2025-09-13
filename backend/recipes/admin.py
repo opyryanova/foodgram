@@ -1,35 +1,30 @@
-# backend/recipes/admin.py
+from django.conf import settings
 from django.contrib import admin, messages
 from django.db.models import Count
+from django.forms import TextInput
 from django.urls import reverse
+from django.utils.dates import MONTHS
 from django.utils.html import format_html, format_html_join
 from django.utils.http import urlencode
-from django.forms import TextInput
-from django.conf import settings
-
-# диапазон ДАТ (без времени)
 from rangefilter.filters import DateRangeFilter
-# локализованные названия месяцев из Django
-from django.utils.dates import MONTHS
 
 from .models import (
-    Tag, Ingredient, Recipe, RecipeIngredient,
-    Favorite, ShoppingCart, Subscription, ShortLink
+    Favorite,
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+    ShortLink,
+    ShoppingCart,
+    Subscription,
+    Tag,
 )
 
-# -----------------------
-# Брендинг админки (шапка, <title>, заголовок главной, ссылка «На сайт»)
-# -----------------------
 admin.site.site_header = "Foodgram — админка"
 admin.site.site_title = "Foodgram | Администрирование"
 admin.site.index_title = "Панель управления"
-# ссылка «На сайт»: берём FRОНТ из настроек, иначе — на корень
 admin.site.site_url = getattr(settings, "FRONTEND_BASE_URL", "/")
 
 
-# -----------------------
-# Inline для состава рецепта (в карточке рецепта)
-# -----------------------
 class RecipeIngredientInline(admin.TabularInline):
     model = RecipeIngredient
     extra = 1
@@ -38,14 +33,7 @@ class RecipeIngredientInline(admin.TabularInline):
     fields = ("ingredient", "amount")
 
 
-# -----------------------
-# Inline «Где используется» (в карточке ингредиента)
-# -----------------------
 class IngredientUsageInline(admin.TabularInline):
-    """
-    Показывает рецепты, где встречается этот ингредиент.
-    Редактируемо: можно добавить/убрать рецепт, поменять количество.
-    """
     model = RecipeIngredient
     fk_name = "ingredient"
     extra = 0
@@ -55,13 +43,10 @@ class IngredientUsageInline(admin.TabularInline):
     verbose_name_plural = "Где используется"
 
 
-# -----------------------
-# Ингредиенты
-# -----------------------
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "measurement_unit", "recipes_count_link")
-    search_fields = ("^name",)  # startswith
+    search_fields = ("^name",)
     list_filter = ("measurement_unit",)
     ordering = ("name",)
     inlines = (IngredientUsageInline,)
@@ -75,7 +60,11 @@ class IngredientAdmin(admin.ModelAdmin):
 
     @admin.display(description="Рецептов")
     def recipes_count_link(self, obj: Ingredient):
-        count = Recipe.objects.filter(recipe_ingredients__ingredient=obj).distinct().count()
+        count = (
+            Recipe.objects.filter(recipe_ingredients__ingredient=obj)
+            .distinct()
+            .count()
+        )
         url = self._recipe_changelist_url(ingredients__id__exact=obj.id)
         return format_html('<a href="{}">{}</a>', url, count)
 
@@ -84,12 +73,12 @@ class IngredientAdmin(admin.ModelAdmin):
         if not obj or not obj.pk:
             return "Появится после сохранения"
         url = self._recipe_changelist_url(ingredients__id__exact=obj.id)
-        return format_html('<a target="_blank" href="{}">Все рецепты →</a>', url)
+        return format_html(
+            '<a target="_blank" href="{}">Все рецепты →</a>',
+            url,
+        )
 
 
-# -----------------------
-# Теги
-# -----------------------
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     list_display = ("id", "name", "slug")
@@ -103,9 +92,6 @@ class TagAdmin(admin.ModelAdmin):
         return super().formfield_for_dbfield(db_field, request, **kwargs)
 
 
-# -----------------------
-# Кастомные фильтры для рецептов
-# -----------------------
 class CookingTimeFilter(admin.SimpleListFilter):
     title = "время готовки"
     parameter_name = "cooking_time_range"
@@ -123,9 +109,15 @@ class CookingTimeFilter(admin.SimpleListFilter):
         if v == "15":
             return queryset.filter(cooking_time__lte=15)
         if v == "30":
-            return queryset.filter(cooking_time__gte=16, cooking_time__lte=30)
+            return queryset.filter(
+                cooking_time__gte=16,
+                cooking_time__lte=30,
+            )
         if v == "60":
-            return queryset.filter(cooking_time__gte=31, cooking_time__lte=60)
+            return queryset.filter(
+                cooking_time__gte=31,
+                cooking_time__lte=60,
+            )
         if v == "61":
             return queryset.filter(cooking_time__gt=60)
         return queryset
@@ -136,7 +128,11 @@ class PubYearFilter(admin.SimpleListFilter):
     parameter_name = "pub_year"
 
     def lookups(self, request, model_admin):
-        years = model_admin.model.objects.dates("pub_date", "year", order="DESC")
+        years = model_admin.model.objects.dates(
+            "pub_date",
+            "year",
+            order="DESC"
+        )
         return [(y.year, str(y.year)) for y in years]
 
     def queryset(self, request, queryset):
@@ -153,10 +149,14 @@ class PubMonthFilter(admin.SimpleListFilter):
     def lookups(self, request, model_admin):
         year = request.GET.get("pub_year")
         if year and year.isdigit():
-            months = (model_admin.model.objects
-                      .filter(pub_date__year=int(year))
-                      .dates("pub_date", "month", order="ASC"))
-            return [(m.month, MONTHS.get(m.month, f"{m.month:02d}")) for m in months]
+            months = (
+                model_admin.model.objects.filter(pub_date__year=int(year))
+                .dates("pub_date", "month", order="ASC")
+            )
+            return [
+                (m.month, MONTHS.get(m.month, f"{m.month:02d}"))
+                for m in months
+            ]
         return [(i, MONTHS.get(i, f"{i:02d}")) for i in range(1, 13)]
 
     def queryset(self, request, queryset):
@@ -170,14 +170,17 @@ class PubMonthFilter(admin.SimpleListFilter):
         return queryset
 
 
-# -----------------------
-# Рецепты
-# -----------------------
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    # колонки: кликабельные теги
-    list_display = ("id", "image_thumb", "name", "tags_list", "author_link",
-                    "favorites_count_link", "pub_date")
+    list_display = (
+        "id",
+        "image_thumb",
+        "name",
+        "tags_list",
+        "author_link",
+        "favorites_count_link",
+        "pub_date",
+    )
     list_display_links = ("id", "name")
     search_fields = ("name", "author__username", "author__email")
     list_filter = (
@@ -186,8 +189,8 @@ class RecipeAdmin(admin.ModelAdmin):
         CookingTimeFilter,
         PubYearFilter,
         PubMonthFilter,
-        ("pub_date", DateRangeFilter),           # календарь «От/До»
-        ("pub_date", admin.DateFieldListFilter)  # кликабельные год/месяц/день
+        ("pub_date", DateRangeFilter),
+        ("pub_date", admin.DateFieldListFilter),
     )
     inlines = (RecipeIngredientInline,)
     readonly_fields = ("pub_date", "image_preview", "recipes_by_author_link")
@@ -197,14 +200,17 @@ class RecipeAdmin(admin.ModelAdmin):
     actions = ["make_shortlinks"]
 
     def get_queryset(self, request):
-        qs = (super().get_queryset(request)
-              .select_related("author")
-              .prefetch_related(
-                  "tags",
-                  "favorites",
-                  "shoppingcarts",
-                  "recipe_ingredients__ingredient",
-              ))
+        qs = (
+            super()
+            .get_queryset(request)
+            .select_related("author")
+            .prefetch_related(
+                "tags",
+                "favorites",
+                "shoppingcarts",
+                "recipe_ingredients__ingredient",
+            )
+        )
         return qs.annotate(favorites_cnt=Count("favorites", distinct=True))
 
     @admin.display(description="Теги")
@@ -221,11 +227,13 @@ class RecipeAdmin(admin.ModelAdmin):
         ]
         return format_html_join(
             " ",
-            '<a href="{}?{}" '
-            'style="display:inline-block;padding:1px 6px;margin:0 4px 4px 0;'
-            'border:1px solid #ddd;border-radius:10px;text-decoration:none;">'
-            '{}</a>',
-            rows
+            (
+                '<a href="{}?{}" '
+                'style="display:inline-block;padding:1px 6px;'
+                "margin:0 4px 4px 0;border:1px solid #ddd;"
+                'border-radius:10px;text-decoration:none;">{}</a>'
+            ),
+            rows,
         )
 
     @admin.display(description="Фото")
@@ -234,7 +242,13 @@ class RecipeAdmin(admin.ModelAdmin):
         if not img:
             return "—"
         try:
-            return format_html('<img src="{}" style="height:40px;width:auto;border-radius:4px;" />', img.url)
+            return format_html(
+                (
+                    '<img src="{}" '
+                    'style="height:40px;width:auto;border-radius:4px;" />'
+                ),
+                img.url,
+            )
         except Exception:
             return "—"
 
@@ -245,8 +259,12 @@ class RecipeAdmin(admin.ModelAdmin):
             return "—"
         try:
             return format_html(
-                '<img src="{}" style="max-height:220px;width:auto;border:1px solid #ddd;padding:2px;border-radius:6px;" />',
-                img.url
+                (
+                    '<img src="{}" '
+                    'style="max-height:220px;width:auto;border:1px solid #ddd;'
+                    'padding:2px;border-radius:6px;" />'
+                ),
+                img.url,
             )
         except Exception:
             return "—"
@@ -268,7 +286,12 @@ class RecipeAdmin(admin.ModelAdmin):
         model_name = Recipe._meta.model_name
         changelist_url = reverse(f"admin:{app_label}_{model_name}_changelist")
         query = urlencode({"author__id__exact": obj.author_id})
-        return format_html('<a href="{}?{}">{}</a>', changelist_url, query, obj.author)
+        return format_html(
+            '<a href="{}?{}">{}</a>',
+            changelist_url,
+            query,
+            obj.author,
+        )
 
     @admin.display(description="Все рецепты этого автора")
     def recipes_by_author_link(self, obj):
@@ -280,24 +303,30 @@ class RecipeAdmin(admin.ModelAdmin):
         query = urlencode({"author__id__exact": obj.author_id})
         return format_html(
             '<a target="_blank" href="{}?{}">Все рецепты автора →</a>',
-            changelist_url, query
+            changelist_url,
+            query,
         )
 
     @admin.action(description="Создать/обновить короткую ссылку")
     def make_shortlinks(self, request, queryset):
         created = 0
         for recipe in queryset:
-            obj, was_created = ShortLink.objects.get_or_create(recipe=recipe)
+            _, was_created = ShortLink.objects.get_or_create(recipe=recipe)
             created += 1 if was_created else 0
         if created:
-            self.message_user(request, f"Создано коротких ссылок: {created}", level=messages.SUCCESS)
+            self.message_user(
+                request,
+                f"Создано коротких ссылок: {created}",
+                level=messages.SUCCESS,
+            )
         else:
-            self.message_user(request, "Все выбранные рецепты уже имеют короткие ссылки.", level=messages.INFO)
+            self.message_user(
+                request,
+                "Все выбранные рецепты уже имеют короткие ссылки.",
+                level=messages.INFO,
+            )
 
 
-# -----------------------
-# Остальные модели
-# -----------------------
 @admin.register(Favorite)
 class FavoriteAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "recipe")

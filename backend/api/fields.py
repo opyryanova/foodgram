@@ -7,16 +7,20 @@ from io import BytesIO
 from typing import Any
 
 from django.core.files.base import ContentFile
-from rest_framework import serializers
 from PIL import Image, UnidentifiedImageError
+from rest_framework import serializers
 
 
 class SmartImageField(serializers.ImageField):
-
     default_error_messages = {
         "invalid_image": "Некорректное изображение.",
-        "invalid_type": "Поддерживаются только типы изображений (jpeg/png/gif/webp).",
-        "not_base64": "Строка не является валидным base64-изображением.",
+        "invalid_type": (
+            "Поддерживаются только типы изображений "
+            "(jpeg/png/gif/webp)."
+        ),
+        "not_base64": (
+            "Строка не является валидным base64-изображением."
+        ),
     }
 
     _ALLOWED_FORMATS = {"jpeg", "jpg", "png", "gif", "webp"}

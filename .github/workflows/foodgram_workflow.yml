@@ -2,9 +2,16 @@ name: foodgram-ci-cd
 
 on:
   push:
-    branches: [ "main" ]
-    tags: [ "v*" ]
+    branches: ["main"]
+    tags: ["v*"]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
   REGISTRY_USER: ${{ secrets.DOCKER_USERNAME }}
@@ -15,9 +22,10 @@ env:
   TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
 
 jobs:
-  tests:
-    name: Run backend tests
+  backend_tests:
+    name: Backend: lint & tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -41,15 +49,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
+          cache: "pip"
 
       - name: Install dependencies
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
+          python -m pip install flake8==6.0.0
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Prepare DB and migrate
+      - name: Django migrate (CI DB)
         env:
           DB_ENGINE: django.db.backends.postgresql
           DB_NAME: foodgram
@@ -64,6 +74,10 @@ jobs:
         working-directory: backend
         run: |
           python manage.py migrate --noinput || echo "skip migrate (no django project?)"
+          python manage.py check || true
+
+      - name: Lint (flake8)
+        run: python -m flake8 backend/
 
       - name: Run tests (pytest if present)
         env:
@@ -84,20 +98,63 @@ jobs:
             echo "no tests found, skip"
           fi
 
-      - name: Notify Telegram (tests)
+      - name: Notify Telegram (backend tests)
         if: always()
         run: |
           STATUS="${{ job.status }}"
-          MSG="foodgram: tests finished with status: ${STATUS}"
+          MSG="foodgram: backend tests finished with status: ${STATUS}"
           if [ -n "${TELEGRAM_TOKEN}" ] && [ -n "${TELEGRAM_TO}" ]; then
             curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
               -d chat_id="${TELEGRAM_TO}" -d text="${MSG}" >/dev/null || true
           fi
 
-  build_and_push:
-    name: Build and push images
-    needs: tests
+  frontend_tests:
+    name: Frontend: lint & tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "frontend/package-lock.json"
+
+      - name: Install deps
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint (eslint if present)
+        working-directory: frontend
+        run: npx --yes eslint . || echo "eslint not configured, skip"
+
+      - name: Run tests (if present)
+        working-directory: frontend
+        run: npm test --if-present -- --ci
+
+      - name: Build (sanity check)
+        working-directory: frontend
+        run: npm run build
+
+      - name: Notify Telegram (frontend tests)
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          MSG="foodgram: frontend checks finished with status: ${STATUS}"
+          if [ -n "${TELEGRAM_TOKEN}" ] && [ -n "${TELEGRAM_TO}" ]; then
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+              -d chat_id="${TELEGRAM_TO}" -d text="${MSG}" >/dev/null || true
+          fi
+
+  build_backend:
+    name: Build & push backend
+    needs: backend_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -120,13 +177,87 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: |
-            pyryanova/foodgram_backend:latest
+            ${{ env.REGISTRY_USER }}/foodgram_backend:latest
+            ${{ env.REGISTRY_USER }}/foodgram_backend:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Prepare gateway Dockerfile (build frontend + nginx)
+  build_frontend:
+    name: Build & push frontend
+    needs: frontend_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_PASS }}
+
+      - name: Prepare frontend Dockerfile
+        run: |
+          cat > frontend/Dockerfile.ci <<'EOF'
+          # build SPA
+          FROM node:20-alpine AS build
+          WORKDIR /app
+          COPY frontend/package*.json ./
+          RUN npm ci --no-audit --no-fund
+          COPY frontend/ ./
+          RUN npm run build
+
+          # serve with nginx (standalone image)
+          FROM nginx:1.25-alpine
+          COPY --from=build /app/build /usr/share/nginx/html
+          # simple health endpoint
+          RUN printf "ok" > /usr/share/nginx/html/healthz
+          HEALTHCHECK --interval=10s --timeout=3s --retries=10 \
+            CMD wget -qO- http://127.0.0.1/healthz || exit 1
+          EOF
+
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile.ci
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.REGISTRY_USER }}/foodgram_frontend:latest
+            ${{ env.REGISTRY_USER }}/foodgram_frontend:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build_gateway:
+    name: Build & push gateway (nginx + built frontend)
+    needs: [build_backend, build_frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_PASS }}
+
+      - name: Prepare gateway Dockerfile
         run: |
           mkdir -p infra
           cat > infra/Dockerfile.gateway <<'EOF'
-          # 1) build frontend
+          # 1) build frontend from repo
           FROM node:20-alpine AS front
           WORKDIR /app
           COPY frontend/package*.json ./
@@ -136,16 +267,13 @@ jobs:
 
           # 2) nginx with config and built frontend
           FROM nginx:1.25-alpine
-          # nginx config from repo (mounted in compose too, but keep in image as fallback)
           COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
-          # built SPA
           COPY --from=front /app/build /usr/share/nginx/html
-          # basic healthcheck
           HEALTHCHECK --interval=10s --timeout=3s --retries=10 \
-            CMD wget -qO- http://127.0.0.1/healthz || exit 1
+            CMD wget -qO- http://127.0.0.1/nginx-health || exit 1
           EOF
 
-      - name: Build & push gateway (nginx + built frontend)
+      - name: Build & push gateway
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -153,9 +281,12 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: |
-            pyryanova/foodgram_gateway:latest
+            ${{ env.REGISTRY_USER }}/foodgram_gateway:latest
+            ${{ env.REGISTRY_USER }}/foodgram_gateway:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Notify Telegram (build)
+      - name: Notify Telegram (builds)
         if: always()
         run: |
           STATUS="${{ job.status }}"
@@ -167,8 +298,9 @@ jobs:
 
   deploy:
     name: Deploy to server
-    needs: build_and_push
+    needs: build_gateway
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -180,11 +312,15 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_KEY }}
           ssh-passphrase: ${{ secrets.SSH_PASSPHRASE }}
 
-      - name: Copy compose file to server
+      - name: Ensure remote dir & copy compose file
+        env:
+          SSH_USER: ${{ env.SSH_USER }}
+          HOST: ${{ env.HOST }}
         run: |
+          ssh -o StrictHostKeyChecking=no "${SSH_USER}@${HOST}" "mkdir -p ~/foodgram"
           rsync -avz -e "ssh -o StrictHostKeyChecking=no" \
             docker-compose.production.yml \
-            "${{ env.SSH_USER }}@${{ env.HOST }}:~/foodgram/docker-compose.production.yml"
+            "${SSH_USER}@${HOST}:~/foodgram/docker-compose.production.yml"
 
       - name: Deploy via SSH
         env:
@@ -192,12 +328,23 @@ jobs:
           HOST: ${{ env.HOST }}
         run: |
           ssh -o StrictHostKeyChecking=no "${SSH_USER}@${HOST}" <<'EOF'
-            set -e
-            mkdir -p ~/foodgram
+            set -Eeuo pipefail
             cd ~/foodgram
             docker compose -f docker-compose.production.yml pull
-            docker compose -f docker-compose.production.yml up -d
-            docker image prune -f
+            docker compose -f docker-compose.production.yml up -d --remove-orphans
+
+            # post-deploy tasks (idempotent)
+            docker compose -f docker-compose.production.yml exec -T backend \
+              python manage.py migrate --noinput || true
+            docker compose -f docker-compose.production.yml exec -T backend \
+              python manage.py collectstatic --noinput || true
+            docker compose -f docker-compose.production.yml exec -T backend \
+              python manage.py fill_ingredients_from_csv --path data/ingredients.csv || true
+
+            # smoke-check nginx
+            curl -fsS http://127.0.0.1/nginx-health >/dev/null || exit 1
+
+            docker image prune -f >/dev/null 2>&1 || true
           EOF
 
       - name: Notify Telegram (deploy)

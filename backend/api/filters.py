@@ -1,46 +1,10 @@
-"""
-Наборы фильтров для DRF (django-filter).
-
-Подключение в вьюсетах:
-    from django_filters.rest_framework import DjangoFilterBackend
-    from api.filters import RecipeFilter, IngredientFilter
-
-    class RecipeViewSet(ModelViewSet):
-        filter_backends = (DjangoFilterBackend,)
-        filterset_class = RecipeFilter
-
-    class IngredientViewSet(ReadOnlyModelViewSet):
-        filter_backends = (DjangoFilterBackend,)
-        filterset_class = IngredientFilter
-"""
-
-from __future__ import annotations
-
 import django_filters
-from django.db.models import QuerySet, Case, When, Value, IntegerField
+from django.db.models import Case, IntegerField, QuerySet, Value, When
 
 from recipes.models import Ingredient, Recipe, Tag
 
 
-# ---------- RecipeFilter ----------
-
 class RecipeFilter(django_filters.FilterSet):
-    """
-    Фильтр для рецептов.
-
-    Параметры запроса:
-      - tags: повторяемый параметр со slug тегов
-               ?tags=breakfast&tags=dinner
-      - author: id автора (int)
-               ?author=12
-      - is_favorited: 1/true/True/yes/on — только рецепты в избранном у текущего пользователя
-               ?is_favorited=1
-      - is_in_shopping_cart: 1/true/True/yes/on — только рецепты из корзины текущего пользователя
-               ?is_in_shopping_cart=1
-      - name: подстрочный поиск по названию (case-insensitive)
-               ?name=борщ
-    """
-
     tags = django_filters.ModelMultipleChoiceFilter(
         field_name="tags__slug",
         to_field_name="slug",
@@ -48,13 +12,24 @@ class RecipeFilter(django_filters.FilterSet):
         method="filter_tags",
     )
     author = django_filters.NumberFilter(field_name="author__id")
-    name = django_filters.CharFilter(field_name="name", lookup_expr="icontains")
+    name = django_filters.CharFilter(
+        field_name="name",
+        lookup_expr="icontains",
+    )
     is_favorited = django_filters.BooleanFilter(method="filter_is_favorited")
-    is_in_shopping_cart = django_filters.BooleanFilter(method="filter_is_in_shopping_cart")
+    is_in_shopping_cart = django_filters.BooleanFilter(
+        method="filter_is_in_shopping_cart"
+    )
 
     class Meta:
         model = Recipe
-        fields = ("tags", "author", "name", "is_favorited", "is_in_shopping_cart")
+        fields = (
+            "tags",
+            "author",
+            "name",
+            "is_favorited",
+            "is_in_shopping_cart",
+        )
 
     @staticmethod
     def _truthy(value) -> bool:
@@ -63,42 +38,43 @@ class RecipeFilter(django_filters.FilterSet):
     def filter_tags(self, queryset: QuerySet, name: str, values) -> QuerySet:
         if not values:
             return queryset
-        # поддерживаем и QuerySet Tag, и список/массив со slug/Tag
         try:
-            tag_ids = list(values.values_list("id", flat=True))  # QuerySet<Tag>
+            tag_ids = list(values.values_list("id", flat=True))
             return queryset.filter(tags__id__in=tag_ids).distinct()
         except Exception:
             slugs = [getattr(v, "slug", v) for v in values]
             return queryset.filter(tags__slug__in=slugs).distinct()
 
-    def filter_is_favorited(self, queryset: QuerySet, name: str, value) -> QuerySet:
+    def filter_is_favorited(
+        self, queryset: QuerySet, name: str, value
+    ) -> QuerySet:
         user = getattr(getattr(self, "request", None), "user", None)
         if not user or not user.is_authenticated or not self._truthy(value):
             return queryset
         return queryset.filter(favorites__user=user).distinct()
 
-    def filter_is_in_shopping_cart(self, queryset: QuerySet, name: str, value) -> QuerySet:
+    def filter_is_in_shopping_cart(
+        self, queryset: QuerySet, name: str, value
+    ) -> QuerySet:
         user = getattr(getattr(self, "request", None), "user", None)
         if not user or not user.is_authenticated or not self._truthy(value):
             return queryset
         return queryset.filter(shoppingcarts__user=user).distinct()
 
 
-# ---------- IngredientFilter ----------
-
 class IngredientFilter(django_filters.FilterSet):
-    """
-    Поиск ингредиентов по параметру ?name=
-    Требование: сначала показывать istartswith, затем прочие icontains.
-    Решение: одно условие icontains + аннотация приоритета, order_by(priority, name, unit).
-    """
     name = django_filters.CharFilter(method="filter_name")
 
     class Meta:
         model = Ingredient
         fields = ("name",)
 
-    def filter_name(self, queryset: QuerySet, name: str, value: str) -> QuerySet:
+    def filter_name(
+        self,
+        queryset: QuerySet,
+        name: str,
+        value: str,
+    ) -> QuerySet:
         if not value:
             return queryset.order_by("name", "measurement_unit")
         needle = str(value).strip()
