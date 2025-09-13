@@ -14,7 +14,6 @@ const Card = ({
   is_in_shopping_cart,
   tags,
   cooking_time,
-  servings,
   author = {},
   handleLike,
   handleAddToCart,
@@ -22,52 +21,70 @@ const Card = ({
 }) => {
   const authContext = useContext(AuthContext);
   const [toLogin, setToLogin] = useState(false);
-  const [whiteSpaceWrap, setWhiteSpaceWrap] = useState(false);
+  const [whiteSpaceValue, setWhiteSpaceValue] = useState("nowrap");
 
   return (
     <div className={styles.card}>
-      <div className={styles.card__header}>
-        <TagsContainer tags={tags} className={styles.card__tags} />
-        <LinkComponent href={`/recipes/${id}`} title="Перейти к рецепту">
-          <div className={styles.card__image}>
-            <img src={image} alt={name} />
-          </div>
-        </LinkComponent>
-      </div>
-      <div className={styles.card__body}>
-        <LinkComponent href={`/recipes/${id}`} title={name}>
-          <h3
-            className={cn(styles.card__title, {
-              [styles.card__title_wrap]: whiteSpaceWrap,
-            })}
-            onMouseEnter={() => setWhiteSpaceWrap(true)}
-            onMouseLeave={() => setWhiteSpaceWrap(false)}
-          >
-            {name}
-          </h3>
-        </LinkComponent>
+      {toLogin && (
+        <Popup
+          title={
+            <>
+              <LinkComponent href="/signin" title="Войдите" /> или{" "}
+              <LinkComponent href="/signup" title="зарегистрируйтесь" />, чтобы
+              сохранить рецепт
+            </>
+          }
+          onClose={() => {
+            setToLogin(false);
+          }}
+        />
+      )}
+      <TagsContainer tags={tags} className={styles.card__tag} />
 
-        <div className={styles.card__row}>
+      <LinkComponent
+        href={`/recipes/${id}`}
+        title={
+          <div
+            className={styles.card__image}
+            style={{ backgroundImage: `url(${image})` }}
+          />
+        }
+      />
+      <div className={styles.card__body}>
+        <LinkComponent
+          className={styles.card__title}
+          href={`/recipes/${id}`}
+          title={name}
+          style={{ whiteSpace: whiteSpaceValue }}
+          onMouseEnter={() => {
+            setWhiteSpaceValue("normal");
+          }}
+          onMouseLeave={() => {
+            setWhiteSpaceValue("nowrap");
+          }}
+        />
+        <div className={styles.card__data}>
+          <div
+            className={styles["card__author-image"]}
+            style={{
+              "background-image": `url(${author.avatar || DefaultImage})`,
+            }}
+          />
           <div className={styles.card__author}>
-            <div className={styles.card__autorpic}>
-              <img src={author.avatar || DefaultImage} alt="userpic" />
-            </div>
             <LinkComponent
               href={`/user/${author.id}`}
               title={`${author.first_name} ${author.last_name}`}
               className={styles.card__link}
             />
           </div>
-          <div className={styles.card__time}>{cooking_time} мин. · {(servings || 1)} порций</div>
+          <div className={styles.card__time}>{cooking_time} мин.</div>
         </div>
         <div className={styles.card__controls}>
           <Button
             className={styles.card__add}
-            click
-            onClick={() => {
-              if (!authContext.isAuth) {
-                setToLogin(true);
-                return;
+            clickHandler={(_) => {
+              if (!authContext) {
+                return setToLogin(true);
               }
               handleAddToCart({
                 id,
@@ -83,25 +100,23 @@ const Card = ({
               </>
             ) : (
               <>
-                <Icons.PlusIcon />
-                Добавить в покупки
+                <Icons.PlusIcon /> Добавить в покупки
               </>
             )}
           </Button>
 
           <Button
-            className={cn(styles.card__like, {
-              [styles.card__like_active]: is_favorited,
-            })}
-            click
-            onClick={() => {
-              if (!authContext.isAuth) {
-                setToLogin(true);
-                return;
+            modifier="style_none"
+            clickHandler={(_) => {
+              if (!authContext) {
+                return setToLogin(true);
               }
-              handleLike({ id, toLike: !is_favorited });
+              handleLike({ id, toLike: Number(!is_favorited) });
             }}
-            data-tooltip-id={id.toString()}
+            className={cn(styles["card__save-button"], {
+              [styles["card__save-button_active"]]: is_favorited,
+            })}
+            data-tooltip-id={id}
             data-tooltip-content={
               is_favorited ? "Удалить из избранного" : "Добавить в избранное"
             }
@@ -112,24 +127,6 @@ const Card = ({
           <Tooltip id={id.toString()} />
         </div>
       </div>
-
-      {toLogin && (
-        <Popup close={() => setToLogin(false)}>
-          <div style={{ padding: 24 }}>
-            <p style={{ marginBottom: 12 }}>
-              Необходимо войти в аккаунт, чтобы выполнить действие.
-            </p>
-            <div style={{ display: "flex", gap: 12 }}>
-              <LinkComponent href="/auth/signin" className="button">
-                Войти
-              </LinkComponent>
-              <LinkComponent href="/auth/signup" className="button button_outline">
-                Регистрация
-              </LinkComponent>
-            </div>
-          </div>
-        </Popup>
-      )}
     </div>
   );
 };

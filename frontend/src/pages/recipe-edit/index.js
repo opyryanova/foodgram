@@ -30,7 +30,7 @@ const RecipeEdit = ({ onItemDelete }) => {
     measurement_unit: "",
   });
 
-  const [recipeIngredients, setRecipeIngredients] = useState([]);
+  const [RecipeIngredients, setRecipeIngredients] = useState([]);
   const [recipeText, setRecipeText] = useState("");
   const [recipeTime, setRecipeTime] = useState(0);
   const [recipeFile, setRecipeFile] = useState(null);
@@ -54,11 +54,11 @@ const RecipeEdit = ({ onItemDelete }) => {
       return setIngredientError("Ингредиент не выбран");
     }
 
-    if (recipeIngredients.find(({ name }) => name === ingredientValue.name)) {
+    if (RecipeIngredients.find(({ name }) => name === ingredientValue.name)) {
       return setIngredientError("Ингредиент уже выбран");
     }
 
-    setRecipeIngredients([...recipeIngredients, ingredientValue]);
+    setRecipeIngredients([...RecipeIngredients, ingredientValue]);
     setIngredientValue({
       name: "",
       id: null,
@@ -130,7 +130,7 @@ const RecipeEdit = ({ onItemDelete }) => {
     if (
       recipeText === "" ||
       recipeName === "" ||
-      recipeIngredients.length === 0 ||
+      RecipeIngredients.length === 0 ||
       recipeTime === "" ||
       recipeFile === "" ||
       recipeFile === null
@@ -165,7 +165,7 @@ const RecipeEdit = ({ onItemDelete }) => {
             const data = {
               text: recipeText,
               name: recipeName,
-              ingredients: recipeIngredients.map((item) => ({
+              ingredients: RecipeIngredients.map((item) => ({
                 id: item.id,
                 amount: item.amount,
               })),
@@ -303,7 +303,7 @@ const RecipeEdit = ({ onItemDelete }) => {
               </p>
             )}
             <div className={styles.ingredientsAdded}>
-              {recipeIngredients.map((item) => {
+              {RecipeIngredients.map((item) => {
                 return (
                   <div className={styles.ingredientsAddedItem}>
                     <span className={styles.ingredientsAddedItemTitle}>
@@ -317,11 +317,11 @@ const RecipeEdit = ({ onItemDelete }) => {
                     <span
                       className={styles.ingredientsAddedItemRemove}
                       onClick={(_) => {
-                        const recipeIngredientsUpdated =
-                          recipeIngredients.filter((ingredient) => {
+                        const RecipeIngredientsUpdated =
+                          RecipeIngredients.filter((ingredient) => {
                             return ingredient.id !== item.id;
                           });
-                        setRecipeIngredients(recipeIngredientsUpdated);
+                        setRecipeIngredients(RecipeIngredientsUpdated);
                       }}
                     >
                       <Icons.IngredientDelete />

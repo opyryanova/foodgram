@@ -39,8 +39,5 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://web:8000/",
-  "devDependencies": {
-    "http-proxy-middleware": "^2.0.9"
-  }
+  "proxy": "http://web:8000/"
 }

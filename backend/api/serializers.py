@@ -14,6 +14,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
 from api.constants import MAX_SERVINGS, MIN_AMOUNT, MIN_COOKING_TIME
+from api.fields import SmartImageField  # <- добавили: понимает и base64, и multipart
 from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Subscription, Tag
 from users.models import Profile, User
 
@@ -178,7 +179,6 @@ class RecipeReadSerializer(serializers.ModelSerializer):
         return Through.objects.filter(recipe=recipe).select_related("ingredient")
 
     def get_ingredients(self, obj):
-        # Возвращаем ровно тот формат, что ожидает фронт/спека
         data = []
         for ri in self._through_qs(obj):
             ing = ri.ingredient
@@ -219,7 +219,8 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     tags = serializers.PrimaryKeyRelatedField(queryset=Tag.objects.all(), many=True)
     ingredients = RecipeIngredientWriteSerializer(many=True)
-    image = Base64ImageField(required=True)
+    # Важно: принимаем И base64, И обычный multipart
+    image = SmartImageField(required=True)
     cooking_time = serializers.IntegerField(min_value=MIN_COOKING_TIME)
     # Счётчик порций — опционально
     servings = serializers.IntegerField(min_value=1, max_value=MAX_SERVINGS, required=False)
@@ -240,18 +241,37 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "author")
 
     def validate(self, data):
-        tags = data.get("tags") or []
-        if not tags:
-            raise serializers.ValidationError("Добавьте хотя бы один тег.")
-        if len(tags) != len(set(tags)):
-            raise serializers.ValidationError("Теги не должны повторяться.")
+        """
+        На create — требуем теги и ингредиенты.
+        На update (PATCH/PUT) — требуем только если поле присутствует во входных данных.
+        """
+        creating = self.instance is None
+        incoming = getattr(self, "initial_data", {}) or {}
 
-        ingredients = data.get("ingredients") or []
-        if not ingredients:
-            raise serializers.ValidationError("Добавьте хотя бы один ингредиент.")
-        ids = [item["id"].id for item in ingredients]
-        if len(ids) != len(set(ids)):
-            raise serializers.ValidationError("Ингредиенты не должны повторяться.")
+        # --- Теги ---
+        if creating or ("tags" in incoming):
+            tags = data.get("tags")
+            if creating and not tags:
+                raise serializers.ValidationError("Добавьте хотя бы один тег.")
+            if "tags" in incoming:
+                if not tags:
+                    raise serializers.ValidationError("Добавьте хотя бы один тег.")
+                tag_ids = [t.id for t in tags]
+                if len(tag_ids) != len(set(tag_ids)):
+                    raise serializers.ValidationError("Теги не должны повторяться.")
+
+        # --- Ингредиенты ---
+        if creating or ("ingredients" in incoming):
+            ingredients = data.get("ingredients")
+            if creating and not ingredients:
+                raise serializers.ValidationError("Добавьте хотя бы один ингредиент.")
+            if "ingredients" in incoming:
+                if not ingredients:
+                    raise serializers.ValidationError("Добавьте хотя бы один ингредиент.")
+                ids = [item["id"].id for item in ingredients]
+                if len(ids) != len(set(ids)):
+                    raise serializers.ValidationError("Ингредиенты не должны повторяться.")
+
         return data
 
     @staticmethod
@@ -265,8 +285,10 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         )
 
     def _set_tags_and_ingredients(self, recipe, tags, ingredients):
-        recipe.tags.set(tags)
-        self._create_ingredients(recipe, ingredients)
+        if tags is not None:
+            recipe.tags.set(tags)
+        if ingredients is not None:
+            self._create_ingredients(recipe, ingredients)
 
     def create(self, validated_data):
         ingredients = validated_data.pop("ingredients")

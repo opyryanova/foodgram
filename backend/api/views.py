@@ -1,4 +1,3 @@
-# backend/api/views.py
 from __future__ import annotations
 
 import base64
@@ -56,6 +55,8 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Поиск по ?name= выполняет IngredientFilter: сначала istartswith, затем icontains.
+    Если ?name= не передан — сортируем алфавитно; если передан — отдаём
+    управление сортировкой фильтру (не задаём order_by в queryset).
     """
     serializer_class = IngredientSerializer
     permission_classes = (AllowAny,)
@@ -64,7 +65,11 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = IngredientFilter
 
     def get_queryset(self):
-        return Ingredient.objects.all().order_by("name", "measurement_unit")
+        qs = Ingredient.objects.all()
+        # Ключевая правка: не навязываем order_by, когда есть ?name=
+        if self.request and self.request.query_params.get("name"):
+            return qs
+        return qs.order_by("name", "measurement_unit")
 
 
 # --------- USERS (Djoser) ---------
@@ -150,7 +155,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
             .prefetch_related("tags", "recipe_ingredients__ingredient")
         )
 
-        # Предвычислим флаги для текущего пользователя (ускоряет list)
         if user:
             fav_exists = Favorite.objects.filter(user=user, recipe=OuterRef("pk"))
             cart_exists = ShoppingCart.objects.filter(user=user, recipe=OuterRef("pk"))
@@ -169,7 +173,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    # --- favorite ---
     @action(detail=True, methods=["post", "delete"], permission_classes=[IsAuthenticated])
     def favorite(self, request, pk=None):
         recipe = get_object_or_404(Recipe, pk=pk)
@@ -185,14 +188,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return Response({"errors": "Этого рецепта нет в избранном."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    # --- shopping_cart ---
     @action(detail=True, methods=["post", "patch", "delete"], permission_classes=[IsAuthenticated], url_path="shopping_cart")
     def shopping_cart(self, request, pk=None):
-        """
-        POST   — добавить рецепт в корзину; можно передать servings (целое >=1)
-        PATCH  — изменить servings у уже добавленного рецепта
-        DELETE — удалить из корзины
-        """
         recipe = get_object_or_404(Recipe, pk=pk)
 
         def _parse_servings(raw):
@@ -233,21 +230,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
             data = RecipeShortSerializer(recipe, context={"request": request}).data
             return Response(data, status=status.HTTP_200_OK)
 
-        # DELETE
         deleted, _ = ShoppingCart.objects.filter(user=request.user, recipe=recipe).delete()
         if deleted == 0:
             return Response({"errors": "Этого рецепта нет в списке покупок."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    # --- download_shopping_cart ---
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated], url_path="download_shopping_cart")
     def download_shopping_cart(self, request):
-        """
-        Агрегируем ингредиенты по всем рецептам из корзины текущего пользователя.
-        Учитываем выбранные порции:
-          k = (cart.servings or recipe.servings) / recipe.servings
-          total = ceil( sum(amount * k) )
-        """
         scale = ExpressionWrapper(
             Value(1.0) * Coalesce(F("recipe__shoppingcarts__servings"), F("recipe__servings")) / F("recipe__servings"),
             output_field=FloatField(),
@@ -298,10 +287,6 @@ def _decode_urlsafe_b64_to_int(s: str) -> Optional[int]:
 
 
 def _lookup_direct_url(code: str) -> Optional[str]:
-    """
-    Если в модели коротких ссылок есть поле target_url — отдадим его сразу.
-    В наших моделях ShortLink поля target_url может не быть — проверяем через getattr.
-    """
     try:
         from recipes.models import ShortLink  # type: ignore
         obj = ShortLink.objects.filter(code=code).first()
@@ -343,25 +328,37 @@ def _resolve_recipe_id(code: str) -> Optional[int]:
     except ValueError:
         pass
 
-    rid = _decode_base62(code)
+    def _decode_base62_local(s: str) -> Optional[int]:
+        try:
+            n = 0
+            for ch in s:
+                n = n * 62 + _BASE62_ALPHABET.index(ch)
+            return n
+        except ValueError:
+            return None
+
+    rid = _decode_base62_local(code)
     if rid and _recipe_exists(rid):
         return rid
 
-    rid = _decode_urlsafe_b64_to_int(code)
-    if rid and _recipe_exists(rid):
-        return rid
+    try:
+        pad = "=" * (-len(code) % 4)
+        raw = base64.urlsafe_b64decode(code + pad)
+        txt = raw.decode("utf-8", errors="ignore")
+        if txt.isdigit():
+            rid = int(txt)
+        else:
+            digits = "".join(ch for ch in txt if ch.isdigit())
+            rid = int(digits) if digits else None
+        if rid and _recipe_exists(rid):
+            return rid
+    except Exception:
+        pass
 
     return None
 
 
 class ShortLinkRedirectView(View):
-    """
-    GET /s/<code> — редирект на фронтовую страницу рецепта (относительный URL).
-    Приоритет:
-      1) если по коду найден target_url в модели — редирект туда;
-      2) иначе пробуем восстановить recipe_id → /recipes/{id};
-      3) иначе на главную '/'.
-    """
     FRONT_RECIPE_PATH = "/recipes/{id}"
 
     def get(self, request, code: str, *args, **kwargs):

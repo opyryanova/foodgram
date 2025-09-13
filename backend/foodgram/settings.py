@@ -1,4 +1,3 @@
-# backend/foodgram/settings.py
 import os
 from pathlib import Path
 
@@ -49,6 +48,7 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "django_filters",
     "djoser",
+    "rangefilter",  # ⬅️ добавили для виджета «диапазон дат» в админке
 
     # Наши
     "users",
