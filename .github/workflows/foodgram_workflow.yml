@@ -260,18 +260,17 @@ jobs:
       - name: Deploy
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ env.HOST }}
-          username: ${{ env.SSH_USER }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
-          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
-            set -e
-            cd ~/foodgram
-            docker compose -f docker-compose.production.yml pull
-            docker compose -f docker-compose.production.yml up -d --remove-orphans
-            docker compose -f docker-compose.production.yml exec -T backend python manage.py migrate --noinput || true
-            docker compose -f docker-compose.production.yml exec -T backend python manage.py collectstatic --noinput || true
-            docker compose -f docker-compose.production.yml exec -T backend python manage.py fill_ingredients_from_csv --path data/ingredients.csv || true
+            cd foodgram
+            sudo docker compose -f docker-compose.production.yml pull
+            sudo docker compose -f docker-compose.production.yml down
+            sudo docker compose -f docker-compose.production.yml up -d
+            sudo docker compose -f docker-compose.production.yml exec backend python manage.py migrate
+            sudo docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic --noinput
+            sudo docker compose -f docker-compose.production.yml exec backend python manage.py fill_ingredients_from_csv --path data/ingredients.csv
 
       - name: Telegram notify
         if: ${{ success() }}
