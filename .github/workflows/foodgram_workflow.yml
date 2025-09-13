@@ -120,7 +120,7 @@ jobs:
       - name: "Set up Node"
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "18"
           cache: "npm"
           cache-dependency-path: "frontend/package-lock.json"
 
@@ -134,7 +134,9 @@ jobs:
 
       - name: "Run tests (if present)"
         working-directory: frontend
-        run: npm test --if-present -- --ci
+        env:
+          CI: "true"
+        run: npm test --if-present -- --ci --watchAll=false
 
       - name: "Build (sanity check)"
         working-directory: frontend
@@ -205,7 +207,7 @@ jobs:
         run: |
           cat > frontend/Dockerfile.ci <<'EOF'
           # build SPA
-          FROM node:20-alpine AS build
+          FROM node:18-alpine AS build   # <-- changed to Node 18
           WORKDIR /app
           COPY frontend/package*.json ./
           RUN npm ci --no-audit --no-fund
@@ -258,7 +260,7 @@ jobs:
           mkdir -p infra
           cat > infra/Dockerfile.gateway <<'EOF'
           # 1) build frontend from repo
-          FROM node:20-alpine AS front
+          FROM node:18-alpine AS front   # <-- changed to Node 18
           WORKDIR /app
           COPY frontend/package*.json ./
           RUN npm ci --no-audit --no-fund
