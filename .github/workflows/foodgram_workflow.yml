@@ -154,7 +154,7 @@ jobs:
           FROM node:18-alpine AS build
           WORKDIR /app
           COPY frontend/package*.json ./
-          RUN npm ci --no-audit --no-fund
+          RUN npm ci --no-audit --no-fund --legacy-peer-deps
           COPY frontend/ ./
           RUN npm run build
           FROM nginx:1.25-alpine
@@ -203,7 +203,7 @@ jobs:
           FROM node:18-alpine AS front
           WORKDIR /app
           COPY frontend/package*.json ./
-          RUN npm ci --no-audit --no-fund
+          RUN npm ci --no-audit --no-fund --legacy-peer-deps
           COPY frontend/ ./
           RUN npm run build
           FROM nginx:1.25-alpine
@@ -276,7 +276,7 @@ jobs:
         if: ${{ success() }}
         run: |
           if [ -n "${TELEGRAM_TOKEN}" ] && [ -n "${TELEGRAM_TO}" ]; then
-            MSG="Фудграм: деплой успешно выполнен (commit ${GITHUB_SHA::7})"
+            MSG="Foodgram: деплой успешно выполнен (commit ${GITHUB_SHA::7})"
             curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
               -d chat_id="${TELEGRAM_TO}" -d text="${MSG}" >/dev/null || true
           fi
