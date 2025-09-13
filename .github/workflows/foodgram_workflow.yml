@@ -23,7 +23,7 @@ env:
 
 jobs:
   backend_tests:
-    name: "Backend: lint & tests"
+    name: Backend: lint & tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -100,7 +100,7 @@ jobs:
           fi
 
   build_backend:
-    name: "Build & push backend"
+    name: Build & push backend
     needs: backend_tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -132,7 +132,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   build_frontend:
-    name: "Build & push frontend"
+    name: Build & push frontend
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -179,7 +179,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   build_gateway:
-    name: "Build & push gateway"
+    name: Build & push gateway
     needs: [build_backend, build_frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -208,7 +208,7 @@ jobs:
           COPY frontend/ ./
           RUN npm run build
           FROM nginx:1.25-alpine
-          COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
+          COPY nginx.conf /etc/nginx/conf.d/default.conf
           COPY --from=front /app/build /usr/share/nginx/html
           HEALTHCHECK --interval=10s --timeout=3s --retries=10 \
             CMD wget -qO- http://127.0.0.1/nginx-health || exit 1
@@ -228,7 +228,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    name: "Deploy to server"
+    name: Deploy to server
     needs: build_gateway
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -246,18 +246,18 @@ jobs:
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: mkdir -p ~/foodgram
 
-      - name: Copy docker-compose via scp
+      - name: Copy compose file
         uses: appleboy/scp-action@master
         with:
           host: ${{ env.HOST }}
           username: ${{ env.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          source: "infra/docker-compose.production.yml"
+          source: "docker-compose.production.yml"
           target: "foodgram"
           overwrite: true
 
-      - name: Deploy commands
+      - name: Deploy
         uses: appleboy/ssh-action@master
         with:
           host: ${{ env.HOST }}
@@ -265,24 +265,18 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
-            set -Eeuo pipefail
+            set -e
             cd ~/foodgram
             docker compose -f docker-compose.production.yml pull
             docker compose -f docker-compose.production.yml up -d --remove-orphans
-            docker compose -f docker-compose.production.yml exec -T backend \
-              python manage.py migrate --noinput || true
-            docker compose -f docker-compose.production.yml exec -T backend \
-              python manage.py collectstatic --noinput || true
-            docker compose -f docker-compose.production.yml exec -T backend \
-              python manage.py fill_ingredients_from_csv --path data/ingredients.csv || true
-            curl -fsS http://127.0.0.1/nginx-health >/dev/null || exit 1
-            docker image prune -f >/dev/null 2>&1 || true
+            docker compose -f docker-compose.production.yml exec -T backend python manage.py migrate --noinput || true
+            docker compose -f docker-compose.production.yml exec -T backend python manage.py collectstatic --noinput || true
+            docker compose -f docker-compose.production.yml exec -T backend python manage.py fill_ingredients_from_csv --path data/ingredients.csv || true
 
-      - name: Telegram notify (success only)
+      - name: Telegram notify
         if: ${{ success() }}
-        run: |
-          if [ -n "${TELEGRAM_TOKEN}" ] && [ -n "${TELEGRAM_TO}" ]; then
-            MSG="Foodgram: деплой успешно выполнен (commit ${GITHUB_SHA::7})"
-            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
-              -d chat_id="${TELEGRAM_TO}" -d text="${MSG}" >/dev/null || true
-          fi
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ env.TELEGRAM_TOKEN }}
+          message: "Foodgram: деплой успешно выполнен (commit ${GITHUB_SHA::7})"
