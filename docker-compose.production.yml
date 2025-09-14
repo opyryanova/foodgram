@@ -1,13 +1,16 @@
 version: "3.9"
 
+volumes:
+  pg_data:
+  backend_static:
+  backend_media:
+  frontend_build:
+
 services:
   db:
     image: postgres:13-alpine
     restart: always
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file: ./.env
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,8 +24,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     restart: always
-    env_file:
-      - ../backend/.env
+    env_file: ./.env
     command: >
       bash -lc "
         python manage.py collectstatic --noinput &&
@@ -41,6 +43,7 @@ services:
       context: ../frontend
       dockerfile: Dockerfile
     restart: "no"
+    env_file: ./.env
     volumes:
       - frontend_build:/app/build
     command: >
@@ -71,9 +74,3 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-volumes:
-  pg_data:
-  backend_static:
-  backend_media:
-  frontend_build:
