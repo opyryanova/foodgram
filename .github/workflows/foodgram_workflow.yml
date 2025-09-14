@@ -110,32 +110,31 @@ jobs:
             if [ -f ".env" ]; then
               echo ".env uzhe est, propuskaem"
             else
-              cat > .env <<EOF
-DB_ENGINE=django.db.backends.postgresql
-DB_NAME=${{ secrets.POSTGRES_DB }}
-POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-DB_HOST=db
-DB_PORT=5432
-
-SECRET_KEY=${{ secrets.SECRET_KEY }}
-DEBUG=False
-ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
-CSRF_TRUSTED_ORIGINS=${{ secrets.CSRF_TRUSTED_ORIGINS }}
-
-TIME_ZONE=Europe/Moscow
-APPEND_SLASH=True
-USE_X_FORWARDED_PROTO=True
-USE_X_FORWARDED_HOST=True
-SECURE_SSL_REDIRECT=True
-SESSION_COOKIE_SECURE=True
-CSRF_COOKIE_SECURE=True
-SESSION_COOKIE_SAMESITE=Lax
-CSRF_COOKIE_SAMESITE=Lax
-DISABLE_BROWSABLE_API=True
-DATA_UPLOAD_MAX_MEMORY_SIZE=26214400
-EOF
+              : > .env
+              echo "DB_ENGINE=django.db.backends.postgresql" >> .env
+              echo "DB_NAME=${{ secrets.POSTGRES_DB }}" >> .env
+              echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" >> .env
+              echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
+              echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+              echo "DB_HOST=db" >> .env
+              echo "DB_PORT=5432" >> .env
+              echo "" >> .env
+              echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+              echo "DEBUG=False" >> .env
+              echo "ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}" >> .env
+              echo "CSRF_TRUSTED_ORIGINS=${{ secrets.CSRF_TRUSTED_ORIGINS }}" >> .env
+              echo "" >> .env
+              echo "TIME_ZONE=Europe/Moscow" >> .env
+              echo "APPEND_SLASH=True" >> .env
+              echo "USE_X_FORWARDED_PROTO=True" >> .env
+              echo "USE_X_FORWARDED_HOST=True" >> .env
+              echo "SECURE_SSL_REDIRECT=True" >> .env
+              echo "SESSION_COOKIE_SECURE=True" >> .env
+              echo "CSRF_COOKIE_SECURE=True" >> .env
+              echo "SESSION_COOKIE_SAMESITE=Lax" >> .env
+              echo "CSRF_COOKIE_SAMESITE=Lax" >> .env
+              echo "DISABLE_BROWSABLE_API=True" >> .env
+              echo "DATA_UPLOAD_MAX_MEMORY_SIZE=26214400" >> .env
               chmod 600 .env
             fi
 
