@@ -97,7 +97,7 @@ jobs:
               fi
             fi
 
-      - name: "SSH: deploy with docker-compose v1"
+      - name: "SSH: deploy with docker compose v2"
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
@@ -109,14 +109,14 @@ jobs:
             cd /home/${{ secrets.USER }}/foodgram
             sudo sed -i 's/\r$//' docker-compose.production.yml || true
             sudo sed -i 's/\r$//' nginx.conf || true
-            sudo docker-compose -f docker-compose.production.yml pull
-            sudo docker-compose -f docker-compose.production.yml down
-            sudo docker-compose -f docker-compose.production.yml up -d
-            sudo docker-compose -f docker-compose.production.yml exec -T backend python manage.py migrate --noinput
-            sudo docker-compose -f docker-compose.production.yml exec -T backend python manage.py collectstatic --noinput
-            sudo docker-compose -f docker-compose.production.yml exec -T backend python manage.py load_ingredients || true
-            sudo docker-compose -f docker-compose.production.yml exec -T backend python manage.py fill_ingredients_from_csv --path data/ingredients.csv || true
-            sudo docker-compose -f docker-compose.production.yml exec -T backend python manage.py import_tags || true
+            sudo docker compose -f docker-compose.production.yml pull
+            sudo docker compose -f docker-compose.production.yml down
+            sudo docker compose -f docker-compose.production.yml up -d
+            sudo docker compose -f docker-compose.production.yml exec -T backend python manage.py migrate --noinput
+            sudo docker compose -f docker-compose.production.yml exec -T backend python manage.py collectstatic --noinput
+            sudo docker compose -f docker-compose.production.yml exec -T backend python manage.py load_ingredients || true
+            sudo docker compose -f docker-compose.production.yml exec -T backend python manage.py fill_ingredients_from_csv --path data/ingredients.csv || true
+            sudo docker compose -f docker-compose.production.yml exec -T backend python manage.py import_tags || true
 
   notify:
     name: Telegram Notification
