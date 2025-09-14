@@ -69,17 +69,33 @@ jobs:
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
             set -euo pipefail
-            if [ ! -d "/home/${{ secrets.USER }}/foodgram/.git" ]; then
-              mkdir -p /home/${{ secrets.USER }}/foodgram
-              cd /home/${{ secrets.USER }}
-              git clone https://github.com/opyryanova/foodgram.git foodgram
+            BASE="/home/${{ secrets.USER }}/foodgram"
+            REPO="https://github.com/opyryanova/foodgram.git"
+            mkdir -p "$BASE"
+            sudo chown -R $USER:$USER "$BASE" || true
+            git config --global --add safe.directory "$BASE" || true
+            if [ -d "$BASE/.git" ]; then
+              cd "$BASE"
+              git fetch --all
+              git reset --hard origin/main
+              git clean -fd
+            else
+              if [ -z "$(ls -A "$BASE" 2>/dev/null)" ]; then
+                rm -rf "$BASE"
+                git clone "$REPO" "$BASE"
+              else
+                cd "$BASE"
+                git init
+                if git remote get-url origin >/dev/null 2>&1; then
+                  git remote set-url origin "$REPO"
+                else
+                  git remote add origin "$REPO"
+                fi
+                git fetch --depth=1 origin main
+                git reset --hard origin/main
+                git clean -fd
+              fi
             fi
-            cd /home/${{ secrets.USER }}/foodgram
-            sudo chown -R $USER:$USER /home/${{ secrets.USER }}/foodgram || true
-            git config --global --add safe.directory /home/${{ secrets.USER }}/foodgram || true
-            git fetch --all
-            git reset --hard origin/main
-            git clean -fd
 
       - name: "SSH: deploy with docker-compose v1"
         uses: appleboy/ssh-action@master
