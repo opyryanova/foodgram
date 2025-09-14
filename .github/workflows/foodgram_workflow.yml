@@ -28,8 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install setuptools  # Добавляем для pkg_resources
-          pip install flake8==6.0.0 flake8-isort==6.1.1
+          pip install flake8==6.0.0
           pip install -r backend/requirements.txt
       - name: Run flake8
         env:
