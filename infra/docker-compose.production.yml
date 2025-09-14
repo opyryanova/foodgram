@@ -19,7 +19,7 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
     restart: always
     env_file: ./.env
@@ -38,7 +38,7 @@ services:
 
   frontend:
     build:
-      context: ../frontend
+      context: ./frontend
       dockerfile: Dockerfile
     restart: "no"
     env_file: ./.env
