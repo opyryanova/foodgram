@@ -38,16 +38,10 @@ services:
 
   frontend:
     image: pyryanova/foodgram_frontend:latest
-    restart: "no"
-    env_file: ./.env
+    restart: always
     volumes:
       - frontend_build:/app/build
-    command: >
-      bash -lc "
-        npm ci &&
-        npm run build &&
-        cp -r build/* /app/build/
-      "
+    command: sh -lc 'cp -r /opt/build/* /app/build/ 2>/dev/null || true; tail -f /dev/null'
 
   nginx:
     image: nginx:1.25-alpine
