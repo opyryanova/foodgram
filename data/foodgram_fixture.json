@@ -2,374 +2,50 @@
 {
   "model": "users.user",
   "fields": {
-    "password": "pbkdf2_sha256$600000$eGLqwyunHbUVmNzMTOn1gu$ovwoFVWIapexH0TT1ddUW+twoTb7eBJ6WylKbhaJp4o=",
-    "last_login": "2025-09-09T19:16:09Z",
+    "password": "pbkdf2_sha256$600000$MmUV50okDT02HtehjoM197$tR7PkB6YJJKiFnFEdFtSXKf/kVJdKklKai+l0pK+X7Y=",
+    "last_login": "2025-09-13T15:20:57.183Z",
     "is_superuser": true,
     "username": "pyryanova",
-    "first_name": "olga",
-    "last_name": "pyryanova",
+    "first_name": "Olga",
+    "last_name": "Pyryanova",
     "is_staff": true,
     "is_active": true,
-    "date_joined": "2025-09-08T20:46:37Z",
+    "date_joined": "2025-09-10T14:58:16.999Z",
     "email": "pyryanova@mail.ru",
     "groups": [],
-    "user_permissions": [
-      [
-        "add_logentry",
-        "admin",
-        "logentry"
-      ],
-      [
-        "change_logentry",
-        "admin",
-        "logentry"
-      ],
-      [
-        "delete_logentry",
-        "admin",
-        "logentry"
-      ],
-      [
-        "view_logentry",
-        "admin",
-        "logentry"
-      ],
-      [
-        "add_group",
-        "auth",
-        "group"
-      ],
-      [
-        "change_group",
-        "auth",
-        "group"
-      ],
-      [
-        "delete_group",
-        "auth",
-        "group"
-      ],
-      [
-        "view_group",
-        "auth",
-        "group"
-      ],
-      [
-        "add_permission",
-        "auth",
-        "permission"
-      ],
-      [
-        "change_permission",
-        "auth",
-        "permission"
-      ],
-      [
-        "delete_permission",
-        "auth",
-        "permission"
-      ],
-      [
-        "view_permission",
-        "auth",
-        "permission"
-      ],
-      [
-        "add_token",
-        "authtoken",
-        "token"
-      ],
-      [
-        "change_token",
-        "authtoken",
-        "token"
-      ],
-      [
-        "delete_token",
-        "authtoken",
-        "token"
-      ],
-      [
-        "view_token",
-        "authtoken",
-        "token"
-      ],
-      [
-        "add_tokenproxy",
-        "authtoken",
-        "tokenproxy"
-      ],
-      [
-        "change_tokenproxy",
-        "authtoken",
-        "tokenproxy"
-      ],
-      [
-        "delete_tokenproxy",
-        "authtoken",
-        "tokenproxy"
-      ],
-      [
-        "view_tokenproxy",
-        "authtoken",
-        "tokenproxy"
-      ],
-      [
-        "add_contenttype",
-        "contenttypes",
-        "contenttype"
-      ],
-      [
-        "change_contenttype",
-        "contenttypes",
-        "contenttype"
-      ],
-      [
-        "delete_contenttype",
-        "contenttypes",
-        "contenttype"
-      ],
-      [
-        "view_contenttype",
-        "contenttypes",
-        "contenttype"
-      ],
-      [
-        "add_favorite",
-        "recipes",
-        "favorite"
-      ],
-      [
-        "change_favorite",
-        "recipes",
-        "favorite"
-      ],
-      [
-        "delete_favorite",
-        "recipes",
-        "favorite"
-      ],
-      [
-        "view_favorite",
-        "recipes",
-        "favorite"
-      ],
-      [
-        "add_ingredient",
-        "recipes",
-        "ingredient"
-      ],
-      [
-        "change_ingredient",
-        "recipes",
-        "ingredient"
-      ],
-      [
-        "delete_ingredient",
-        "recipes",
-        "ingredient"
-      ],
-      [
-        "view_ingredient",
-        "recipes",
-        "ingredient"
-      ],
-      [
-        "add_recipe",
-        "recipes",
-        "recipe"
-      ],
-      [
-        "change_recipe",
-        "recipes",
-        "recipe"
-      ],
-      [
-        "delete_recipe",
-        "recipes",
-        "recipe"
-      ],
-      [
-        "view_recipe",
-        "recipes",
-        "recipe"
-      ],
-      [
-        "add_recipeingredient",
-        "recipes",
-        "recipeingredient"
-      ],
-      [
-        "change_recipeingredient",
-        "recipes",
-        "recipeingredient"
-      ],
-      [
-        "delete_recipeingredient",
-        "recipes",
-        "recipeingredient"
-      ],
-      [
-        "view_recipeingredient",
-        "recipes",
-        "recipeingredient"
-      ],
-      [
-        "add_shoppingcart",
-        "recipes",
-        "shoppingcart"
-      ],
-      [
-        "change_shoppingcart",
-        "recipes",
-        "shoppingcart"
-      ],
-      [
-        "delete_shoppingcart",
-        "recipes",
-        "shoppingcart"
-      ],
-      [
-        "view_shoppingcart",
-        "recipes",
-        "shoppingcart"
-      ],
-      [
-        "add_shortlink",
-        "recipes",
-        "shortlink"
-      ],
-      [
-        "change_shortlink",
-        "recipes",
-        "shortlink"
-      ],
-      [
-        "delete_shortlink",
-        "recipes",
-        "shortlink"
-      ],
-      [
-        "view_shortlink",
-        "recipes",
-        "shortlink"
-      ],
-      [
-        "add_subscription",
-        "recipes",
-        "subscription"
-      ],
-      [
-        "change_subscription",
-        "recipes",
-        "subscription"
-      ],
-      [
-        "delete_subscription",
-        "recipes",
-        "subscription"
-      ],
-      [
-        "view_subscription",
-        "recipes",
-        "subscription"
-      ],
-      [
-        "add_tag",
-        "recipes",
-        "tag"
-      ],
-      [
-        "change_tag",
-        "recipes",
-        "tag"
-      ],
-      [
-        "delete_tag",
-        "recipes",
-        "tag"
-      ],
-      [
-        "view_tag",
-        "recipes",
-        "tag"
-      ],
-      [
-        "add_session",
-        "sessions",
-        "session"
-      ],
-      [
-        "change_session",
-        "sessions",
-        "session"
-      ],
-      [
-        "delete_session",
-        "sessions",
-        "session"
-      ],
-      [
-        "view_session",
-        "sessions",
-        "session"
-      ],
-      [
-        "add_profile",
-        "users",
-        "profile"
-      ],
-      [
-        "change_profile",
-        "users",
-        "profile"
-      ],
-      [
-        "delete_profile",
-        "users",
-        "profile"
-      ],
-      [
-        "view_profile",
-        "users",
-        "profile"
-      ],
-      [
-        "add_user",
-        "users",
-        "user"
-      ],
-      [
-        "change_user",
-        "users",
-        "user"
-      ],
-      [
-        "delete_user",
-        "users",
-        "user"
-      ],
-      [
-        "view_user",
-        "users",
-        "user"
-      ]
-    ]
+    "user_permissions": []
   }
 },
 {
   "model": "users.user",
   "fields": {
-    "password": "pbkdf2_sha256$600000$eM6vy8kJuwolIaCOtQqR9v$s8bRTQn1lGmJcVHLbXTYer7oKjTjRiNB5Ts9eQmxgFo=",
-    "last_login": null,
+    "password": "pbkdf2_sha256$600000$tG0XnYxOhoZIwcWyYbQVhr$uzua7pDqq8Zo4GNmWMAQAgrE+UpekUEAsP6hEr3U0O4=",
+    "last_login": "2025-09-11T08:02:55.389Z",
     "is_superuser": false,
-    "username": "Elena",
-    "first_name": "",
-    "last_name": "",
+    "username": "chef",
+    "first_name": "Chef",
+    "last_name": "Cook",
     "is_staff": false,
     "is_active": true,
-    "date_joined": "2025-09-09T19:30:28.528Z",
-    "email": "",
+    "date_joined": "2025-09-11T08:02:33.508Z",
+    "email": "chef@example.com",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "users.user",
+  "fields": {
+    "password": "pbkdf2_sha256$600000$5w3DKNE4nEgijOO6JZuesF$7fcK9ia2S3qZzxyMSBpCAIGzI/CHXIh1+B/l8WjraEY=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "Ivan23",
+    "first_name": "Иван",
+    "last_name": "З.",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2025-09-13T13:16:29Z",
+    "email": "ivan_z@mail.ru",
     "groups": [],
     "user_permissions": []
   }
@@ -379,7 +55,27 @@
   "pk": 1,
   "fields": {
     "user": [
-      "Elena"
+      "pyryanova"
+    ],
+    "avatar": "avatars/c95f3357-b92e-43b5-862f-33523d69f306.jpg"
+  }
+},
+{
+  "model": "users.profile",
+  "pk": 2,
+  "fields": {
+    "user": [
+      "chef"
+    ],
+    "avatar": ""
+  }
+},
+{
+  "model": "users.profile",
+  "pk": 3,
+  "fields": {
+    "user": [
+      "Ivan23"
     ],
     "avatar": ""
   }
@@ -388,37 +84,45 @@
   "model": "recipes.tag",
   "pk": 1,
   "fields": {
-    "name": "Десерт",
-    "slug": "desert"
+    "name": "Завтрак",
+    "slug": "breakfast"
   }
 },
 {
   "model": "recipes.tag",
   "pk": 2,
   "fields": {
-    "name": "Завтрак",
-    "slug": "zavtrak"
+    "name": "Обед",
+    "slug": "lunch"
   }
 },
 {
   "model": "recipes.tag",
   "pk": 3,
   "fields": {
-    "name": "Обед",
-    "slug": "obed"
+    "name": "Ужин",
+    "slug": "dinner"
   }
 },
 {
   "model": "recipes.tag",
   "pk": 4,
   "fields": {
-    "name": "Ужин",
-    "slug": "uzhin"
+    "name": "Десерт",
+    "slug": "desert"
   }
 },
 {
   "model": "recipes.tag",
   "pk": 5,
+  "fields": {
+    "name": "Напиток",
+    "slug": "napitok"
+  }
+},
+{
+  "model": "recipes.tag",
+  "pk": 6,
   "fields": {
     "name": "Закуска",
     "slug": "zakuska"
@@ -17917,62 +17621,72 @@
   "pk": 1,
   "fields": {
     "author": [
-      "Elena"
+      "pyryanova"
     ],
     "name": "Шакшука",
-    "image": "recipes/S600xU_2x.webp",
-    "text": "Шакшука — блюдо из яиц, жаренных в соусе из помидоров, острого перца, лука и приправ. Входит в кухню большинства арабских стран и Израиля. Подаётся на завтрак с хлебом или питой. \r\n\r\nНазвание переводится как «смесь» или «беспорядок», что отражает суть блюда: на сковороде соединяются овощи, специи и яйца. Существует множество вариаций шакшуки, например, с сыром, грибами или фаршем.",
+    "image": "recipes/шакшука.jpeg",
+    "text": "Шакшука - это чудесный вариант сытного завтрака. Готовят его традиционно - яйца, которые тушатся в томатном соусе. По желанию в овощной соус можно добавить баклажаны, грибы, можно даже немного фарша или колбасы) Мы приготовим классический вариант. Блюдо готовится очень быстро, а вкус получается отменный! За короткое время вы всегда сможете накормить семью сытным завтраком!",
     "cooking_time": 30,
-    "servings": 4,
-    "pub_date": "2025-09-10T07:31:42.495Z",
+    "servings": 2,
+    "pub_date": "2025-09-12T12:26:39.314Z",
     "tags": [
-      2
+      1
     ]
   }
 },
 {
-  "model": "recipes.recipeingredient",
-  "pk": 1,
-  "fields": {
-    "recipe": 1,
-    "ingredient": 2180,
-    "amount": 240
-  }
-},
-{
-  "model": "recipes.recipeingredient",
+  "model": "recipes.recipe",
   "pk": 2,
   "fields": {
-    "recipe": 1,
-    "ingredient": 1341,
-    "amount": 400
+    "author": [
+      "chef"
+    ],
+    "name": "Пятница",
+    "image": "recipes/zakuska.jpg",
+    "text": "«Пятница» – это когда сбрасываешь с плеч всю усталость недели и остаешься наедине с настоящим вкусом жизни. Ледяная рюмка водки освежает и очищает, а бутерброд на бородинском хлебе с сочным салом и хрустящим маринованным огурцом возвращает к простым удовольствиям – покою, теплу и настоящей силе.",
+    "cooking_time": 2,
+    "servings": 1,
+    "pub_date": "2025-09-13T07:14:20.066Z",
+    "tags": [
+      5
+    ]
   }
 },
 {
-  "model": "recipes.recipeingredient",
+  "model": "recipes.recipe",
   "pk": 3,
   "fields": {
-    "recipe": 1,
-    "ingredient": 886,
-    "amount": 160
+    "author": [
+      "Ivan23"
+    ],
+    "name": "Меренговый рулет",
+    "image": "recipes/owl_wide_1200_3e7fc20a7e1a2387f6a2b5e2c41db313.jpg",
+    "text": "Меренговый рулет – это легкое облако хруста и нежности в одном вдохе. Снаружи – тонкая карамель, внутри – шелковистая меренга. Каждый ломтик – маленький праздник: тает во рту, оставляя чистый, светлый вкус. Разговоры сами собой стихают. Налейте эспрессо и забудьте обо всем.",
+    "cooking_time": 215,
+    "servings": 4,
+    "pub_date": "2025-09-13T13:39:44.690Z",
+    "tags": [
+      4
+    ]
   }
 },
 {
-  "model": "recipes.recipeingredient",
+  "model": "recipes.recipe",
   "pk": 4,
   "fields": {
-    "recipe": 1,
-    "ingredient": 2055,
-    "amount": 20
-  }
-},
-{
-  "model": "recipes.recipeingredient",
-  "pk": 5,
-  "fields": {
-    "recipe": 1,
-    "ingredient": 1419,
-    "amount": 40
+    "author": [
+      "chef"
+    ],
+    "name": "Стейк",
+    "image": "recipes/стеик.webp",
+    "text": "Стейк – это огонь и тишина в одной тарелке. Румяная корочка с легким дымком и сок, пульсирующий жизнью. Каждый кусок – как пауза, в которой есть только вкус, ради которого выбираешь простое и настоящее.",
+    "cooking_time": 4,
+    "servings": 1,
+    "pub_date": "2025-09-13T22:40:12.749Z",
+    "tags": [
+      2,
+      3
+    ]
   }
 },
 {
@@ -17980,8 +17694,8 @@
   "pk": 6,
   "fields": {
     "recipe": 1,
-    "ingredient": 1240,
-    "amount": 100
+    "ingredient": 2180,
+    "amount": 120
   }
 },
 {
@@ -17989,8 +17703,8 @@
   "pk": 7,
   "fields": {
     "recipe": 1,
-    "ingredient": 1684,
-    "amount": 2
+    "ingredient": 1341,
+    "amount": 200
   }
 },
 {
@@ -17998,13 +17712,58 @@
   "pk": 8,
   "fields": {
     "recipe": 1,
-    "ingredient": 1235,
-    "amount": 3
+    "ingredient": 1240,
+    "amount": 50
   }
 },
 {
   "model": "recipes.recipeingredient",
   "pk": 9,
+  "fields": {
+    "recipe": 1,
+    "ingredient": 886,
+    "amount": 80
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 10,
+  "fields": {
+    "recipe": 1,
+    "ingredient": 2055,
+    "amount": 10
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 11,
+  "fields": {
+    "recipe": 1,
+    "ingredient": 1419,
+    "amount": 20
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 12,
+  "fields": {
+    "recipe": 1,
+    "ingredient": 1684,
+    "amount": 5
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 13,
+  "fields": {
+    "recipe": 1,
+    "ingredient": 1235,
+    "amount": 5
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 14,
   "fields": {
     "recipe": 1,
     "ingredient": 803,
@@ -18013,16 +17772,16 @@
 },
 {
   "model": "recipes.recipeingredient",
-  "pk": 10,
+  "pk": 15,
   "fields": {
     "recipe": 1,
     "ingredient": 1202,
-    "amount": 6
+    "amount": 5
   }
 },
 {
   "model": "recipes.recipeingredient",
-  "pk": 11,
+  "pk": 16,
   "fields": {
     "recipe": 1,
     "ingredient": 435,
@@ -18030,14 +17789,195 @@
   }
 },
 {
+  "model": "recipes.recipeingredient",
+  "pk": 17,
+  "fields": {
+    "recipe": 2,
+    "ingredient": 255,
+    "amount": 50
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 18,
+  "fields": {
+    "recipe": 2,
+    "ingredient": 1992,
+    "amount": 20
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 19,
+  "fields": {
+    "recipe": 2,
+    "ingredient": 1141,
+    "amount": 20
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 20,
+  "fields": {
+    "recipe": 2,
+    "ingredient": 1535,
+    "amount": 10
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 21,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 1546,
+    "amount": 100
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 22,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 1952,
+    "amount": 60
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 23,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 2174,
+    "amount": 85
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 24,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 726,
+    "amount": 7
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 25,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 204,
+    "amount": 3
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 26,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 175,
+    "amount": 1
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 27,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 974,
+    "amount": 125
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 28,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 1637,
+    "amount": 75
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 29,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 936,
+    "amount": 50
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 30,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 1553,
+    "amount": 10
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 31,
+  "fields": {
+    "recipe": 3,
+    "ingredient": 1106,
+    "amount": 1
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 32,
+  "fields": {
+    "recipe": 4,
+    "ingredient": 287,
+    "amount": 300
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 33,
+  "fields": {
+    "recipe": 4,
+    "ingredient": 1334,
+    "amount": 5
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 34,
+  "fields": {
+    "recipe": 4,
+    "ingredient": 1285,
+    "amount": 5
+  }
+},
+{
+  "model": "recipes.recipeingredient",
+  "pk": 35,
+  "fields": {
+    "recipe": 4,
+    "ingredient": 1686,
+    "amount": 5
+  }
+},
+{
+  "model": "recipes.favorite",
+  "pk": 4,
+  "fields": {
+    "user": [
+      "pyryanova"
+    ],
+    "recipe": 3
+  }
+},
+{
   "model": "recipes.subscription",
-  "pk": 1,
+  "pk": 4,
   "fields": {
     "user": [
       "pyryanova"
     ],
     "author": [
-      "Elena"
+      "chef"
     ]
   }
 }
