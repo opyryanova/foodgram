@@ -44,7 +44,7 @@ services:
     command: sh -lc 'cp -r /opt/build/* /app/build/ 2>/dev/null || true; tail -f /dev/null'
 
   nginx:
-    image: nginx:1.25-alpine
+    image: pyryanova/foodgram_gateway:latest
     restart: always
     depends_on:
       - backend
