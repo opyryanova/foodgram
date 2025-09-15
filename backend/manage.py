@@ -6,13 +6,10 @@ import sys
 
 def main():
     """Run administrative tasks."""
-    # Локальная разработка/CI: подхватить переменные из .env, если пакет установлен.
-    # В Docker/проде переменные задаются окружением контейнера — этот блок не мешает.
     try:
         from dotenv import load_dotenv  # type: ignore
         load_dotenv()
     except Exception:
-        # Нет python-dotenv — просто идем дальше (например, в проде)
         pass
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "foodgram.settings")
