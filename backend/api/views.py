@@ -336,9 +336,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         ).delete()
         if deleted == 0:
             return Response(
-                    {"errors": "Этого рецепта нет в списке покупок."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                {"errors": "Этого рецепта нет в списке покупок."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
