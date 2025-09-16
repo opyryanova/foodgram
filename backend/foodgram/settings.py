@@ -174,6 +174,9 @@ DJOSER = {
     "HIDE_USERS": False,
     "SERIALIZERS": {
         "token_create": "api.serializers.LoginOrEmailTokenCreateSerializer",
+        "user": "api.serializers.UserInfoSerializer",
+        "current_user": "api.serializers.UserInfoSerializer",
+        "user_create": "api.serializers.UserCreateSerializer",
     },
 }
 
