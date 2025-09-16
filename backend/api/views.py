@@ -1,4 +1,3 @@
-import base64
 from typing import Optional
 
 from django.db.models import (
@@ -25,20 +24,27 @@ from rest_framework.permissions import (
 )
 from rest_framework.response import Response
 
-from api.constants import BASE62_ALPHABET
 from api.filters import IngredientFilter, RecipeFilter
 from api.permissions import IsAuthorOrReadOnly
 from api.serializers import (
+    FavoriteSerializer,
     IngredientSerializer,
     RecipeSerializer,
     RecipeShortSerializer,
     RecipeWriteSerializer,
+    ServingsPayload,
     SetUserAvatarSerializer,
+    ShoppingCartSerializer,
     SubscribeAuthorSerializer,
     SubscriptionsSerializer,
     TagSerializer,
     UserCreateSerializer,
     UserInfoSerializer,
+)
+from api.utils import (
+    encode_base62,
+    decode_base62,
+    decode_urlsafe_b64_to_int,
 )
 from recipes.models import (
     Favorite,
@@ -129,21 +135,16 @@ class UserViewSet(viewsets.ModelViewSet):
     )
     def subscribe(self, request, *args, **kwargs):
         author = self.get_object()
-        if request.method.lower() == "post":
-            if author == request.user:
-                return Response(
-                    {"errors": "Нельзя подписаться на себя."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            obj, created = Subscription.objects.get_or_create(
-                user=request.user, author=author
+        method = request.method.lower()
+
+        if method == "post":
+            serializer = SubscribeAuthorSerializer(
+                data={"author": author.id},
+                context={"request": request},
             )
-            if not created:
-                return Response(
-                    {"errors": "Вы уже подписаны на этого пользователя."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            data = SubscribeAuthorSerializer(
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            data = SubscriptionsSerializer(
                 author, context={"request": request}
             ).data
             return Response(data, status=status.HTTP_201_CREATED)
@@ -151,7 +152,7 @@ class UserViewSet(viewsets.ModelViewSet):
         deleted, _ = Subscription.objects.filter(
             user=request.user, author=author
         ).delete()
-        if deleted == 0:
+        if not deleted:
             return Response(
                 {"errors": "Подписки не было."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -231,14 +232,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
         method = request.method.lower()
 
         if method == "post":
-            obj, created = Favorite.objects.get_or_create(
-                user=request.user, recipe=recipe
+            serializer = FavoriteSerializer(
+                data={"user": request.user.id, "recipe": recipe.id},
+                context={"request": request},
             )
-            if not created:
-                return Response(
-                    {"errors": "Уже в избранном."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
             data = RecipeShortSerializer(
                 recipe, context={"request": request}
             ).data
@@ -247,7 +246,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         deleted, _ = Favorite.objects.filter(
             user=request.user, recipe=recipe
         ).delete()
-        if deleted == 0:
+        if not deleted:
             return Response(
                 {"errors": "Этого рецепта нет в избранном."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -262,43 +261,24 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def shopping_cart(self, request, pk=None):
         recipe = get_object_or_404(Recipe, pk=pk)
-
-        def _parse_servings(raw):
-            if raw is None or raw == "":
-                return None
-            try:
-                val = int(raw)
-                if val < 1:
-                    raise ValueError
-                return val
-            except (TypeError, ValueError):
-                return "error"
-
         method = request.method.lower()
 
         if method == "post":
-            servings = _parse_servings(request.data.get("servings"))
-            if servings == "error":
-                return Response(
-                    {
-                        "errors": (
-                            "Поле servings должно быть положительным "
-                            "целым числом."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            obj, created = ShoppingCart.objects.get_or_create(
-                user=request.user, recipe=recipe
+            payload = ServingsPayload(data=request.data)
+            payload.is_valid(raise_exception=True)
+            servings = payload.validated_data.get("servings")
+
+            serializer = ShoppingCartSerializer(
+                data={"user": request.user.id, "recipe": recipe.id},
+                context={"request": request},
             )
-            if not created:
-                return Response(
-                    {"errors": "Уже в списке покупок."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            serializer.is_valid(raise_exception=True)
+            instance = serializer.save()
+
             if servings is not None:
-                obj.servings = servings
-                obj.save(update_fields=["servings"])
+                instance.servings = servings
+                instance.save(update_fields=["servings"])
+
             data = RecipeShortSerializer(
                 recipe, context={"request": request}
             ).data
@@ -313,8 +293,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     {"errors": "Этого рецепта нет в списке покупок."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            servings = _parse_servings(request.data.get("servings"))
-            if servings in (None, "error"):
+            payload = ServingsPayload(data=request.data)
+            payload.is_valid(raise_exception=True)
+            servings = payload.validated_data.get("servings")
+            if servings is None:
                 return Response(
                     {
                         "errors": (
@@ -334,7 +316,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         deleted, _ = ShoppingCart.objects.filter(
             user=request.user, recipe=recipe
         ).delete()
-        if deleted == 0:
+        if not deleted:
             return Response(
                 {"errors": "Этого рецепта нет в списке покупок."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -349,7 +331,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def get_link(self, request, pk=None):
         recipe = get_object_or_404(Recipe, pk=pk)
-        code = _encode_base62(int(recipe.id))
+        code = encode_base62(int(recipe.id))
         short_url = request.build_absolute_uri(f"/s/{code}")
         return Response({"short-link": short_url}, status=status.HTTP_200_OK)
 
@@ -397,39 +379,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return response
 
 
-def _decode_base62(s: str) -> Optional[int]:
-    try:
-        n = 0
-        for ch in s:
-            n = n * 62 + BASE62_ALPHABET.index(ch)
-        return n
-    except ValueError:
-        return None
-
-
-def _decode_urlsafe_b64_to_int(s: str) -> Optional[int]:
-    try:
-        pad = "=" * (-len(s) % 4)
-        raw = base64.urlsafe_b64decode(s + pad)
-        txt = raw.decode("utf-8", errors="ignore")
-        if txt.isdigit():
-            return int(txt)
-        digits = "".join(ch for ch in txt if ch.isdigit())
-        return int(digits) if digits else None
-    except Exception:
-        return None
-
-
-def _encode_base62(n: int) -> str:
-    if n == 0:
-        return BASE62_ALPHABET[0]
-    chars = []
-    while n > 0:
-        n, rem = divmod(n, 62)
-        chars.append(BASE62_ALPHABET[rem])
-    return "".join(reversed(chars))
-
-
 def _lookup_direct_url(code: str) -> Optional[str]:
     try:
         from recipes.models import ShortLink  # type: ignore
@@ -461,10 +410,10 @@ def _resolve_recipe_id(code: str) -> Optional[int]:
     rid = _lookup_recipe_id(code)
     if rid:
         return rid
-    val = _decode_base62(code)
+    val = decode_base62(code)
     if isinstance(val, int):
         return val
-    val = _decode_urlsafe_b64_to_int(code)
+    val = decode_urlsafe_b64_to_int(code)
     if isinstance(val, int):
         return val
     return None

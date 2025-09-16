@@ -31,10 +31,6 @@ class RecipeFilter(django_filters.FilterSet):
             "is_in_shopping_cart",
         )
 
-    @staticmethod
-    def _truthy(value) -> bool:
-        return str(value) in {"1", "true", "True", "yes", "on"}
-
     def filter_tags(self, queryset: QuerySet, name: str, values) -> QuerySet:
         if not values:
             return queryset
@@ -48,16 +44,20 @@ class RecipeFilter(django_filters.FilterSet):
     def filter_is_favorited(
         self, queryset: QuerySet, name: str, value
     ) -> QuerySet:
+        if value is not True:
+            return queryset
         user = getattr(getattr(self, "request", None), "user", None)
-        if not user or not user.is_authenticated or not self._truthy(value):
+        if not user or not user.is_authenticated:
             return queryset
         return queryset.filter(favorites__user=user).distinct()
 
     def filter_is_in_shopping_cart(
         self, queryset: QuerySet, name: str, value
     ) -> QuerySet:
+        if value is not True:
+            return queryset
         user = getattr(getattr(self, "request", None), "user", None)
-        if not user or not user.is_authenticated or not self._truthy(value):
+        if not user or not user.is_authenticated:
             return queryset
         return queryset.filter(shoppingcarts__user=user).distinct()
 

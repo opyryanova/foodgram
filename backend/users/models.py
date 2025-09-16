@@ -6,8 +6,24 @@ from django.db.models.functions import Lower
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from users.validators import USERNAME_VALIDATORS
+
 
 class User(AbstractUser):
+    username = models.CharField(
+        "Имя пользователя",
+        max_length=150,
+        unique=True,
+        help_text=(
+            "Обязательное поле. До 150 символов. "
+            "Только буквы, цифры и @/./+/-/_."
+        ),
+        validators=USERNAME_VALIDATORS,
+        error_messages={
+            "unique": "Пользователь с таким username уже существует.",
+        },
+    )
+
     email = models.EmailField(
         "Email",
         blank=False,

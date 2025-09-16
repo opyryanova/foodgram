@@ -2,29 +2,36 @@ from django.conf import settings
 from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
-    RegexValidator,
 )
 from django.db import models
 from django.db.models.functions import Lower
 
-User = settings.AUTH_USER_MODEL
-
-SLUG_VALIDATOR = RegexValidator(
-    regex=r"^[-a-zA-Z0-9_]+$",
-    message="Разрешены латиница, цифры, дефис и нижнее подчеркивание.",
+from recipes.constants import (
+    TAG_NAME_MAX_LEN,
+    TAG_SLUG_MAX_LEN,
+    INGREDIENT_NAME_MAX_LEN,
+    INGREDIENT_UNIT_MAX_LEN,
+    RECIPE_NAME_MAX_LEN,
+    COOKING_TIME_MIN,
+    SERVINGS_MIN,
+    SERVINGS_MAX,
+    SHORTLINK_CODE_MAX_LEN,
 )
+from recipes.validators import SLUG_VALIDATOR
+
+User = settings.AUTH_USER_MODEL
 
 
 class Tag(models.Model):
     name = models.CharField(
         "Название",
-        max_length=64,
+        max_length=TAG_NAME_MAX_LEN,
         unique=True,
         db_index=True,
     )
     slug = models.SlugField(
         "Слаг",
-        max_length=32,
+        max_length=TAG_SLUG_MAX_LEN,
         unique=True,
         validators=[SLUG_VALIDATOR],
         db_index=True,
@@ -42,12 +49,12 @@ class Tag(models.Model):
 class Ingredient(models.Model):
     name = models.CharField(
         "Название",
-        max_length=128,
+        max_length=INGREDIENT_NAME_MAX_LEN,
         db_index=True,
     )
     measurement_unit = models.CharField(
         "Единица измерения",
-        max_length=64,
+        max_length=INGREDIENT_UNIT_MAX_LEN,
     )
 
     class Meta:
@@ -80,14 +87,16 @@ class Recipe(models.Model):
     )
     name = models.CharField(
         "Название",
-        max_length=256,
+        max_length=RECIPE_NAME_MAX_LEN,
         db_index=True,
     )
     image = models.ImageField("Картинка", upload_to="recipes/")
     text = models.TextField("Описание")
     cooking_time = models.PositiveIntegerField(
         "Время готовки, мин",
-        validators=[MinValueValidator(1, message="Минимум 1 минута.")],
+        validators=[
+            MinValueValidator(COOKING_TIME_MIN, message="Минимум 1 минута.")
+        ],
     )
     tags = models.ManyToManyField(
         Tag,
@@ -102,8 +111,11 @@ class Recipe(models.Model):
     )
     servings = models.PositiveSmallIntegerField(
         "Количество порций",
-        default=1,
-        validators=[MinValueValidator(1), MaxValueValidator(50)],
+        default=SERVINGS_MIN,
+        validators=[
+            MinValueValidator(SERVINGS_MIN),
+            MaxValueValidator(SERVINGS_MAX)
+        ],
         help_text="На сколько порций рассчитан рецепт.",
     )
     pub_date = models.DateTimeField("Дата публикации", auto_now_add=True)
@@ -199,7 +211,7 @@ class ShoppingCart(models.Model):
         "Порций для покупки",
         null=True,
         blank=True,
-        validators=[MinValueValidator(1)],
+        validators=[MinValueValidator(SERVINGS_MIN)],
         help_text=(
             "Сколько порций планируете купить; если пусто — как в рецепте."
         ),
@@ -260,7 +272,7 @@ class ShortLink(models.Model):
     )
     code = models.CharField(
         "Код",
-        max_length=16,
+        max_length=SHORTLINK_CODE_MAX_LEN,
         unique=True,
         db_index=True,
     )

@@ -23,6 +23,7 @@ from recipes.models import (
     Tag,
 )
 from users.models import Profile, User
+from users.validators import USERNAME_VALIDATORS
 
 
 class UserInfoSerializer(serializers.ModelSerializer):
@@ -58,6 +59,8 @@ class UserInfoSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(validators=USERNAME_VALIDATORS)
+
     class Meta:
         model = User
         fields = (
@@ -141,6 +144,14 @@ class RecipeShortSerializer(serializers.ModelSerializer):
             url = obj.image.url
             return request.build_absolute_uri(url) if request else url
         return None
+
+
+class ServingsPayload(serializers.Serializer):
+    servings = serializers.IntegerField(
+        min_value=1,
+        required=False,
+        allow_null=True
+    )
 
 
 class RecipeSerializer(serializers.ModelSerializer):
@@ -446,16 +457,12 @@ class LoginOrEmailTokenCreateSerializer(DjoserTokenCreateSerializer):
                 {"non_field_errors": ["Укажите логин и пароль."]}
             )
 
-        login_norm = raw_login.lower() if "@" in raw_login else raw_login
+        login_norm = raw_login.lower()
 
         U = get_user_model()
-        user = (
-            U.objects.filter(
+        user = (U.objects.filter(
                 Q(email__iexact=login_norm) | Q(username__iexact=login_norm)
-            )
-            .order_by("id")
-            .first()
-        )
+            ).first())
 
         if not user or not user.check_password(password):
             raise serializers.ValidationError(
