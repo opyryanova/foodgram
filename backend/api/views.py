@@ -117,7 +117,10 @@ class UserViewSet(viewsets.ModelViewSet):
         url_path="me",
     )
     def me(self, request):
-        serializer = UserInfoSerializer(request.user, context={"request": request})
+        serializer = UserInfoSerializer(
+            request.user,
+            context={"request": request}
+        )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(

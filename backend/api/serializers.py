@@ -477,8 +477,8 @@ class LoginOrEmailTokenCreateSerializer(DjoserTokenCreateSerializer):
 
         U = get_user_model()
         user = (U.objects.filter(
-                Q(email__iexact=login_norm) | Q(username__iexact=login_norm)
-            ).first())
+            Q(email__iexact=login_norm) | Q(username__iexact=login_norm)
+        ).first())
 
         if not user or not user.check_password(password):
             raise serializers.ValidationError(
