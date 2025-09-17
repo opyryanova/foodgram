@@ -33,6 +33,7 @@ from api.serializers import (
     RecipeShortSerializer,
     RecipeWriteSerializer,
     ServingsPayload,
+    SetPasswordSerializer,
     SetUserAvatarSerializer,
     ShoppingCartSerializer,
     SubscribeAuthorSerializer,
@@ -113,6 +114,16 @@ class UserViewSet(viewsets.ModelViewSet):
         detail=False,
         methods=["get"],
         permission_classes=[IsAuthenticated],
+        url_path="me",
+    )
+    def me(self, request):
+        serializer = UserInfoSerializer(request.user, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated],
         url_path="subscriptions",
     )
     def subscriptions(self, request):
@@ -126,6 +137,23 @@ class UserViewSet(viewsets.ModelViewSet):
         if page is not None:
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=["post"],
+        permission_classes=[IsAuthenticated],
+        url_path="set_password",
+    )
+    def set_password(self, request):
+        serializer = SetPasswordSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=True,

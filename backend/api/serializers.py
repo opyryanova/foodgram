@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from django.db.models import Q
 from djoser.serializers import (
     TokenCreateSerializer as DjoserTokenCreateSerializer,
@@ -152,6 +153,21 @@ class ServingsPayload(serializers.Serializer):
         required=False,
         allow_null=True
     )
+
+
+class SetPasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, required=True)
+
+    def validate_current_password(self, value):
+        user = self.context.get("request").user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Неверный текущий пароль.")
+        return value
+
+    def validate_new_password(self, value):
+        validate_password(value, self.context.get("request").user)
+        return value
 
 
 class RecipeSerializer(serializers.ModelSerializer):
