@@ -11,3 +11,5 @@ BASE62_ALPHABET = (
     "0123456789abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
+
+FRONT_RECIPE_PATH = "/recipes/{id}"

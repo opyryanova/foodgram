@@ -1,5 +1,3 @@
-from typing import Optional
-
 from django.db.models import (
     Exists,
     ExpressionWrapper,
@@ -12,6 +10,7 @@ from django.db.models import (
 )
 from django.db.models.functions import Cast, Ceil, Coalesce
 from django.http import HttpResponse
+    # noqa: W291
 from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 from django_filters.rest_framework import DjangoFilterBackend
@@ -42,11 +41,7 @@ from api.serializers import (
     UserCreateSerializer,
     UserInfoSerializer,
 )
-from api.utils import (
-    encode_base62,
-    decode_base62,
-    decode_urlsafe_b64_to_int,
-)
+from api.utils import encode_base62, lookup_direct_url
 from recipes.models import (
     Favorite,
     Ingredient,
@@ -119,7 +114,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def me(self, request):
         serializer = UserInfoSerializer(
             request.user,
-            context={"request": request}
+            context={"request": request},
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -222,9 +217,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = (
-            self.request.user
-            if self.request.user.is_authenticated
-            else None
+            self.request.user if self.request.user.is_authenticated else None
         )
         qs = (
             Recipe.objects.all()
@@ -410,61 +403,14 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return response
 
 
-def _lookup_direct_url(code: str) -> Optional[str]:
-    try:
-        from recipes.models import ShortLink  # type: ignore
-        obj = ShortLink.objects.filter(code=code).first()
-        if obj and getattr(obj, "target_url", None):
-            return str(obj.target_url)
-    except Exception:
-        pass
-    return None
-
-
-def _lookup_recipe_id(code: str) -> Optional[int]:
-    try:
-        from recipes.models import ShortLink  # type: ignore
-        obj = (
-            ShortLink.objects.select_related("recipe")
-            .filter(code=code)
-            .only("recipe_id")
-            .first()
-        )
-        if obj and obj.recipe_id:
-            return int(obj.recipe_id)
-    except Exception:
-        pass
-    return None
-
-
-def _resolve_recipe_id(code: str) -> Optional[int]:
-    rid = _lookup_recipe_id(code)
-    if rid:
-        return rid
-    val = decode_base62(code)
-    if isinstance(val, int):
-        return val
-    val = decode_urlsafe_b64_to_int(code)
-    if isinstance(val, int):
-        return val
-    return None
-
-
 class ShortLinkRedirectView(View):
-    FRONT_RECIPE_PATH = "/recipes/{id}"
-
     def get(self, request, code: str, *args, **kwargs):
         code = (code or "").strip()
         if not code:
             return redirect("/", permanent=False)
 
-        direct = _lookup_direct_url(code)
+        direct = lookup_direct_url(code)
         if direct:
             return redirect(direct, permanent=False)
 
-        rid = _resolve_recipe_id(code)
-        if rid:
-            return redirect(
-                self.FRONT_RECIPE_PATH.format(id=rid), permanent=False
-            )
         return redirect("/", permanent=False)

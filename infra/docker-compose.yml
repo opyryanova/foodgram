@@ -60,11 +60,11 @@ services:
     platform: linux/amd64
     ports:
       - "80:80"
-      - "443:443"
+      #- "443:443"
     volumes:
       - front_build:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - /etc/letsencrypt:/etc/letsencrypt
+      #- /etc/letsencrypt:/etc/letsencrypt
       - static_volume:/var/html/static
       - media_volume:/var/html/media
     depends_on:
