@@ -64,7 +64,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "backend.foodgram.urls"
+ROOT_URLCONF = "foodgram.urls"
 
 TEMPLATES = [
     {
