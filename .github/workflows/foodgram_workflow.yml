@@ -83,7 +83,6 @@ jobs:
               rm -rf "$BASE"
               git clone "$REPO" "$BASE"
             fi
-
       - name: "SSH: ensure infra/.env from secrets"
         uses: appleboy/ssh-action@master
         with:
@@ -126,7 +125,6 @@ jobs:
               } > infra/.env
               chmod 600 infra/.env
             fi
-
       - name: "SSH: deploy with docker compose (infra)"
         uses: appleboy/ssh-action@master
         with:
@@ -137,30 +135,23 @@ jobs:
           script: |
             set -euo pipefail
             cd /home/${{ secrets.USER }}/foodgram
-
             sudo sed -i 's/\r$//' infra/docker-compose.production.yml || true
             sudo sed -i 's/\r$//' infra/nginx.conf || true
-
             sudo systemctl disable --now nginx apache2 2>/dev/null || true
-
             ids=$(sudo docker ps -q --filter publish=80)
             [ -n "$ids" ] && sudo docker stop $ids || true
-
             sudo docker compose -p infra -f infra/docker-compose.production.yml down --remove-orphans || true
             # На всякий случай погасим возможный корневой compose (чтобы точно освободить 80)
             if [ -f docker-compose.production.yml ]; then
               sudo docker compose -p infra -f docker-compose.production.yml down --remove-orphans || true
             fi
-
             sudo docker compose -p infra -f infra/docker-compose.production.yml pull
             sudo docker compose -p infra -f infra/docker-compose.production.yml up -d --remove-orphans
-
             sudo docker compose -p infra -f infra/docker-compose.production.yml exec -T backend python manage.py migrate --noinput
             sudo docker compose -p infra -f infra/docker-compose.production.yml exec -T backend python manage.py collectstatic --noinput
             sudo docker compose -p infra -f infra/docker-compose.production.yml exec -T backend python manage.py load_ingredients || true
             sudo docker compose -p infra -f infra/docker-compose.production.yml exec -T backend python manage.py fill_ingredients_from_csv --path data/ingredients.csv || true
             sudo docker compose -p infra -f infra/docker-compose.production.yml exec -T backend python manage.py import_tags || true
-
   notify:
     name: Telegram Notification
     runs-on: ubuntu-latest
