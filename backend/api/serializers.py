@@ -57,7 +57,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
         if hasattr(obj, "profile") and obj.profile.avatar:
             url = obj.profile.avatar.url
             return request.build_absolute_uri(url) if request else url
-        return None
+        return ""
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

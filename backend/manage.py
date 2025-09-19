@@ -12,7 +12,7 @@ def main():
     except Exception:
         pass
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "foodgram.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.foodgram.settings")
 
     try:
         from django.core.management import execute_from_command_line
