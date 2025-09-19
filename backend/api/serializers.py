@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.db import IntegrityError
 from django.db.models import Q
+
 from djoser.serializers import (
     TokenCreateSerializer as DjoserTokenCreateSerializer,
 )
@@ -24,7 +26,6 @@ from recipes.models import (
     Tag,
 )
 from users.models import Profile, User
-from users.validators import USERNAME_VALIDATORS
 
 
 class UserInfoSerializer(serializers.ModelSerializer):
@@ -60,7 +61,21 @@ class UserInfoSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(validators=USERNAME_VALIDATORS)
+    first_name = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        max_length=150,
+    )
+    last_name = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        max_length=150,
+    )
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        allow_blank=False,
+    )
 
     class Meta:
         model = User
@@ -74,8 +89,46 @@ class UserCreateSerializer(serializers.ModelSerializer):
         )
         extra_kwargs = {"password": {"write_only": True}}
 
+    def validate_first_name(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("Обязательное поле.")
+        return value
+
+    def validate_last_name(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("Обязательное поле.")
+        return value
+
+    def validate_email(self, value):
+        val = (value or "").strip().lower()
+        if not val:
+            raise serializers.ValidationError("Укажите email.")
+        if User.objects.filter(email__iexact=val).exists():
+            raise serializers.ValidationError(
+                "Пользователь с таким email уже существует."
+            )
+        return val
+
     def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
+        try:
+            user = User.objects.create_user(**validated_data)
+        except IntegrityError as exc:
+            msg = str(exc).lower()
+            if "username" in msg:
+                raise serializers.ValidationError(
+                    {
+                        "username": [
+                            "Пользователь с таким username уже существует."
+                        ]
+                    }
+                )
+            if "email" in msg:
+                raise serializers.ValidationError(
+                    {"email": ["Пользователь с таким email уже существует."]}
+                )
+            raise
         Profile.objects.get_or_create(user=user)
         return user
 
@@ -151,13 +204,19 @@ class ServingsPayload(serializers.Serializer):
     servings = serializers.IntegerField(
         min_value=1,
         required=False,
-        allow_null=True
+        allow_null=True,
     )
 
 
 class SetPasswordSerializer(serializers.Serializer):
-    current_password = serializers.CharField(write_only=True, required=True)
-    new_password = serializers.CharField(write_only=True, required=True)
+    current_password = serializers.CharField(
+        write_only=True,
+        required=True,
+    )
+    new_password = serializers.CharField(
+        write_only=True,
+        required=True,
+    )
 
     def validate_current_password(self, value):
         user = self.context.get("request").user
@@ -197,10 +256,9 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     def _through_qs(self, recipe):
         through = Recipe.ingredients.through
-        return (
-            through.objects.filter(recipe=recipe)
-            .select_related("ingredient")
-        )
+        return through.objects.filter(
+            recipe=recipe
+        ).select_related("ingredient")
 
     def get_ingredients(self, obj):
         data = []
@@ -275,9 +333,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         if creating or ("tags" in incoming):
             tags = data.get("tags")
             if creating and not tags:
-                raise serializers.ValidationError(
-                    "Добавьте хотя бы один тег."
-                )
+                raise serializers.ValidationError("Добавьте хотя бы один тег.")
             if "tags" in incoming:
                 if not tags:
                     raise serializers.ValidationError(
@@ -300,8 +356,8 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         "Добавьте хотя бы один ингредиент."
                     )
-                ids = [item["id"].id for item in ingredients]
-                if len(ids) != len(set(ids)):
+                ids_ = [item["id"].id for item in ingredients]
+                if len(ids_) != len(set(ids_)):
                     raise serializers.ValidationError(
                         "Ингредиенты не должны повторяться."
                     )
@@ -362,7 +418,7 @@ class SubscriptionsSerializer(UserInfoSerializer):
     recipes_count = serializers.IntegerField(read_only=True)
 
     class Meta(UserInfoSerializer.Meta):
-        fields = UserInfoSerializer.Meta.fields + ('recipes', 'recipes_count')
+        fields = UserInfoSerializer.Meta.fields + ("recipes", "recipes_count")
 
     def get_recipes(self, obj):
         request = self.context.get("request")
@@ -376,14 +432,9 @@ class SubscriptionsSerializer(UserInfoSerializer):
                 qs = qs[:limit]
             except (ValueError, TypeError):
                 raise serializers.ValidationError(
-                    "recipes_limit должен быть неотрицательным "
-                    "целым числом."
+                    "recipes_limit должен быть неотрицательным целым числом."
                 )
-        return RecipeShortSerializer(
-            qs,
-            many=True,
-            context=self.context,
-        ).data
+        return RecipeShortSerializer(qs, many=True, context=self.context).data
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -414,8 +465,7 @@ class SubscribeAuthorSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return SubscriptionsSerializer(
-            instance.author,
-            context=self.context,
+            instance.author, context=self.context
         ).data
 
 
@@ -438,8 +488,7 @@ class _UserRecipeRelationSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return RecipeShortSerializer(
-            instance.recipe,
-            context=self.context,
+            instance.recipe, context=self.context
         ).data
 
 
@@ -475,10 +524,10 @@ class LoginOrEmailTokenCreateSerializer(DjoserTokenCreateSerializer):
 
         login_norm = raw_login.lower()
 
-        U = get_user_model()
-        user = (U.objects.filter(
+        UserModel = get_user_model()
+        user = UserModel.objects.filter(
             Q(email__iexact=login_norm) | Q(username__iexact=login_norm)
-        ).first())
+        ).first()
 
         if not user or not user.check_password(password):
             raise serializers.ValidationError(

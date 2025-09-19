@@ -49,9 +49,9 @@ INSTALLED_APPS = [
     "django_filters",
     "djoser",
     "rangefilter",
-    "users",
-    "recipes",
-    "api",
+    "backend.recipes",
+    "backend.users",
+    "backend.api",
 ]
 
 MIDDLEWARE = [

@@ -199,10 +199,11 @@ class UserViewSet(viewsets.ModelViewSet):
                 profile.avatar.delete(save=True)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
+        partial = (request.method == "PATCH")
         serializer = self.get_serializer(
             profile,
             data=request.data,
-            partial=True,
+            partial=partial,
             context={"request": request},
         )
         serializer.is_valid(raise_exception=True)
