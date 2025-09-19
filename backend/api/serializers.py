@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 
 from djoser.serializers import (
@@ -16,7 +16,7 @@ from api.constants import (
     MIN_COOKING_TIME,
     MIN_SERVINGS,
 )
-from api.fields import SmartImageField
+# from api.fields import SmartImageField
 from recipes.models import (
     Favorite,
     Ingredient,
@@ -303,7 +303,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         many=True,
     )
     ingredients = RecipeIngredientWriteSerializer(many=True)
-    image = SmartImageField(required=True)
+    image = Base64ImageField(required=True)
     cooking_time = serializers.IntegerField(min_value=MIN_COOKING_TIME)
     servings = serializers.IntegerField(
         min_value=MIN_SERVINGS,
@@ -384,16 +384,23 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         if ingredients is not None:
             self._create_ingredients(recipe, ingredients)
 
+    @transaction.atomic
     def create(self, validated_data):
         ingredients = validated_data.pop("ingredients")
         tags = validated_data.pop("tags")
-        recipe = Recipe.objects.create(
-            author=self.context["request"].user,
-            **validated_data,
-        )
-        self._set_tags_and_ingredients(recipe, tags, ingredients)
-        return recipe
+        try:
+            recipe = Recipe.objects.create(
+                author=self.context["request"].user,
+                **validated_data,
+            )
+            self._set_tags_and_ingredients(recipe, tags, ingredients)
+            return recipe
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {"detail": "Невалидные данные рецепта."}
+            )
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         ingredients = validated_data.pop("ingredients", None)
         tags = validated_data.pop("tags", None)
