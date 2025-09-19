@@ -10,7 +10,6 @@ from django.db.models import (
 )
 from django.db.models.functions import Cast, Ceil, Coalesce
 from django.http import HttpResponse
-    # noqa: W291
 from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 from django_filters.rest_framework import DjangoFilterBackend

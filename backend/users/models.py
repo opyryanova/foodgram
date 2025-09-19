@@ -11,8 +11,8 @@ from users.validators import USERNAME_VALIDATORS
 
 class User(AbstractUser):
     first_name = models.CharField("Имя", max_length=150, blank=False)
-    last_name  = models.CharField("Фамилия", max_length=150, blank=False)
-    
+    last_name = models.CharField("Фамилия", max_length=150, blank=False)
+
     username = models.CharField(
         "Имя пользователя",
         max_length=150,
