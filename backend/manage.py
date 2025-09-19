@@ -14,7 +14,7 @@ def main():
 
     os.environ.setdefault(
         "DJANGO_SETTINGS_MODULE",
-        "backend.foodgram.settings"
+        "foodgram.settings"
     )
 
     try:
