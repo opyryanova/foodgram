@@ -16,7 +16,7 @@ from api.constants import (
     MIN_COOKING_TIME,
     MIN_SERVINGS,
 )
-# from api.fields import SmartImageField
+
 from recipes.models import (
     Favorite,
     Ingredient,
