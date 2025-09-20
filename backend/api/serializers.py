@@ -42,6 +42,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "email",
             "is_subscribed",
             "avatar",
+            "shopping_cart_count",
         )
         read_only_fields = fields
 
