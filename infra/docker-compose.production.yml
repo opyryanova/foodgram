@@ -54,9 +54,9 @@ services:
       - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - frontend_build:/usr/share/nginx/html:ro
-      - backend_static:/static:ro
-      - backend_media:/media:ro
+      - frontend_build:/usr/share/nginx/html:rw
+      - backend_static:/var/html/static:ro
+      - backend_media:/var/html/media:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/lib/letsencrypt:/var/lib/letsencrypt:ro
     healthcheck:
