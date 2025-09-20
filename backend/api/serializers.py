@@ -31,6 +31,7 @@ from users.models import Profile, User
 class UserInfoSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
+    shopping_cart_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -59,6 +60,9 @@ class UserInfoSerializer(serializers.ModelSerializer):
             url = obj.profile.avatar.url
             return request.build_absolute_uri(url) if request else url
         return ""
+    
+    def get_shopping_cart_count(self, obj):
+        return ShoppingCart.objects.filter(user=obj).count()
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
