@@ -4,8 +4,6 @@ PAGE_SIZE_QUERY_PARAM = "limit"
 
 MIN_AMOUNT = 1
 MIN_COOKING_TIME = 1
-MAX_SERVINGS = 50
-MIN_SERVINGS = 1
 
 BASE62_ALPHABET = (
     "0123456789abcdefghijklmnopqrstuvwxyz"

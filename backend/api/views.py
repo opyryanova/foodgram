@@ -28,9 +28,8 @@ from api.serializers import (
     FavoriteSerializer,
     IngredientSerializer,
     RecipeSerializer,
+    RecipeCreateSerializer,
     RecipeShortSerializer,
-    RecipeWriteSerializer,
-    ServingsPayload,
     SetPasswordSerializer,
     SetUserAvatarSerializer,
     ShoppingCartSerializer,
@@ -240,7 +239,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ("list", "retrieve"):
             return RecipeSerializer
-        return RecipeWriteSerializer
+        return RecipeCreateSerializer
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -288,54 +287,16 @@ class RecipeViewSet(viewsets.ModelViewSet):
         method = request.method.lower()
 
         if method == "post":
-            payload = ServingsPayload(data=request.data)
-            payload.is_valid(raise_exception=True)
-            servings = payload.validated_data.get("servings")
-
             serializer = ShoppingCartSerializer(
                 data={"user": request.user.id, "recipe": recipe.id},
                 context={"request": request},
             )
             serializer.is_valid(raise_exception=True)
-            instance = serializer.save()
-
-            if servings is not None:
-                instance.servings = servings
-                instance.save(update_fields=["servings"])
-
+            serializer.save()
             data = RecipeShortSerializer(
                 recipe, context={"request": request}
             ).data
             return Response(data, status=status.HTTP_201_CREATED)
-
-        if method == "patch":
-            obj = ShoppingCart.objects.filter(
-                user=request.user, recipe=recipe
-            ).first()
-            if not obj:
-                return Response(
-                    {"errors": "Этого рецепта нет в списке покупок."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            payload = ServingsPayload(data=request.data)
-            payload.is_valid(raise_exception=True)
-            servings = payload.validated_data.get("servings")
-            if servings is None:
-                return Response(
-                    {
-                        "errors": (
-                            "Укажите корректное значение servings "
-                            "(целое число \u2265 1)."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            obj.servings = servings
-            obj.save(update_fields=["servings"])
-            data = RecipeShortSerializer(
-                recipe, context={"request": request}
-            ).data
-            return Response(data, status=status.HTTP_200_OK)
 
         deleted, _ = ShoppingCart.objects.filter(
             user=request.user, recipe=recipe

@@ -1,8 +1,5 @@
 from django.conf import settings
-from django.core.validators import (
-    MaxValueValidator,
-    MinValueValidator,
-)
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models.functions import Lower
 
@@ -13,8 +10,6 @@ from recipes.constants import (
     INGREDIENT_UNIT_MAX_LEN,
     RECIPE_NAME_MAX_LEN,
     COOKING_TIME_MIN,
-    SERVINGS_MIN,
-    SERVINGS_MAX,
     SHORTLINK_CODE_MAX_LEN,
 )
 from recipes.validators import SLUG_VALIDATOR
@@ -109,15 +104,6 @@ class Recipe(models.Model):
         related_name="recipes",
         verbose_name="Ингредиенты",
     )
-    servings = models.PositiveSmallIntegerField(
-        "Количество порций",
-        default=SERVINGS_MIN,
-        validators=[
-            MinValueValidator(SERVINGS_MIN),
-            MaxValueValidator(SERVINGS_MAX)
-        ],
-        help_text="На сколько порций рассчитан рецепт.",
-    )
     pub_date = models.DateTimeField("Дата публикации", auto_now_add=True)
 
     class Meta:
@@ -200,36 +186,28 @@ class ShoppingCart(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="cart",
+        related_name='shopping_user',
+        verbose_name='Добавил в корзину'
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name="shoppingcarts",
-    )
-    servings = models.PositiveSmallIntegerField(
-        "Порций для покупки",
-        null=True,
-        blank=True,
-        validators=[MinValueValidator(SERVINGS_MIN)],
-        help_text=(
-            "Сколько порций планируете купить; если пусто — как в рецепте."
-        ),
+        related_name='shopping_recipe',
+        verbose_name='Рецепт в корзине'
     )
 
     class Meta:
-        verbose_name = "Покупка"
-        verbose_name_plural = "Список покупок"
+        verbose_name = 'Корзина'
+        verbose_name_plural = 'Корзина'
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "recipe"],
-                name="unique_cart_user_recipe",
+                fields=['user', 'recipe'],
+                name='unique_ShoppingCart'
             )
         ]
 
-    def __str__(self) -> str:
-        count = self.servings or self.recipe.servings
-        return f"{self.user} → {self.recipe} ({count} порций)"
+    def __str__(self):
+        return f'{self.user.username} - {self.recipe.name}'
 
 
 class Subscription(models.Model):
