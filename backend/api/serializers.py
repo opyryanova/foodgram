@@ -9,6 +9,7 @@ from djoser.serializers import (
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
+import logging
 
 from api.constants import (
     MAX_SERVINGS,
@@ -26,6 +27,9 @@ from recipes.models import (
     Tag,
 )
 from users.models import Profile, User
+
+
+logger = logging.getLogger(__name__)
 
 
 class UserInfoSerializer(serializers.ModelSerializer):
@@ -394,13 +398,18 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         ingredients = validated_data.pop("ingredients")
         tags = validated_data.pop("tags")
         validated_data.pop("author", None)
+        logger.debug(f"Validated data: {validated_data}")
+        logger.debug(f"Ingredients: {ingredients}")
+        logger.debug(f"Tags: {tags}")
         try:
             recipe = Recipe.objects.create(**validated_data)
+            logger.debug(f"Created recipe: {recipe}")
             self._set_tags_and_ingredients(recipe, tags, ingredients)
             return recipe
-        except IntegrityError:
+        except IntegrityError as e:
+            logger.error(f"IntegrityError: {str(e)}")
             raise serializers.ValidationError(
-                {"detail": "Невалидные данные рецепта."}
+                {"detail": "Невалидные данные рецепта: {str(e)}"}
             )
 
     @transaction.atomic
