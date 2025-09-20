@@ -312,7 +312,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         many=True,
     )
     ingredients = RecipeIngredientWriteSerializer(many=True)
-    image = Base64ImageField(required=True)
+    image = serializers.ImageField(required=True)
     cooking_time = serializers.IntegerField(min_value=MIN_COOKING_TIME)
     servings = serializers.IntegerField(
         min_value=MIN_SERVINGS,
@@ -397,36 +397,34 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         ingredients = validated_data.pop("ingredients")
         tags = validated_data.pop("tags")
-        author = self.context['request'].user
+        validated_data.pop("author", None)
         logger.debug(f"Validated data: {validated_data}")
         logger.debug(f"Ingredients: {ingredients}")
         logger.debug(f"Tags: {tags}")
-        logger.debug(f"Author: {author}")
+        logger.debug(f"Author from validated_data: {validated_data.get('author', 'Not provided')}")
         try:
-            recipe = Recipe.objects.create(author=author, **validated_data)
+            recipe = Recipe.objects.create(**validated_data)
             logger.debug(f"Created recipe: {recipe}")
             self._set_tags_and_ingredients(recipe, tags, ingredients)
             return recipe
         except IntegrityError as e:
             logger.error(f"IntegrityError: {str(e)}")
             raise serializers.ValidationError(
-                {"detail": "Невалидные данные рецепта: {str(e)}"}
+                {"detail": f"Невалидные данные рецепта: {str(e)}"}
             )
 
     @transaction.atomic
     def update(self, instance, validated_data):
         ingredients = validated_data.pop("ingredients", None)
         tags = validated_data.pop("tags", None)
-
+        validated_data.pop("author", None)
         instance = super().update(instance, validated_data)
-
         through = Recipe.ingredients.through
         if ingredients is not None:
             through.objects.filter(recipe=instance).delete()
             self._create_ingredients(instance, ingredients)
         if tags is not None:
             instance.tags.set(tags)
-
         return instance
 
     def to_representation(self, instance):
