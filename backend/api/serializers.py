@@ -10,6 +10,8 @@ from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 import logging
+from PIL import Image
+import io
 
 from api.constants import (
     MAX_SERVINGS,
@@ -335,6 +337,23 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "author")
 
+    def validate_image(self, value):
+        logger.debug(f"Validating image: {value}, content_type: {value.content_type}, size: {value.size}")
+        try:
+            img = Image.open(value)
+            img.verify()
+            img.close()
+            if value.content_type not in ['image/jpeg', 'image/png', 'image/gif']:
+                logger.error(f"Invalid image MIME type: {value.content_type}")
+                raise serializers.ValidationError("Файл должен быть JPEG, PNG или GIF.")
+            if value.size > 5 * 1024 * 1024:
+                logger.error(f"Image size too large: {value.size} bytes")
+                raise serializers.ValidationError("Размер файла не должен превышать 5 МБ.")
+            return value
+        except Exception as e:
+            logger.error(f"Image validation error: {str(e)}")
+            raise serializers.ValidationError("Загруженный файл не является корректным изображением.")
+    
     def validate(self, data):
         creating = self.instance is None
         incoming = getattr(self, "initial_data", {}) or {}
@@ -401,7 +420,6 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         logger.debug(f"Validated data: {validated_data}")
         logger.debug(f"Ingredients: {ingredients}")
         logger.debug(f"Tags: {tags}")
-        logger.debug(f"Author from validated_data: {validated_data.get('author', 'Not provided')}")
         try:
             recipe = Recipe.objects.create(**validated_data)
             logger.debug(f"Created recipe: {recipe}")
@@ -412,20 +430,32 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"detail": f"Невалидные данные рецепта: {str(e)}"}
             )
+        except Exception as e:
+            logger.error(f"Unexpected error in create: {str(e)}")
+            raise serializers.ValidationError(
+                {"detail": f"Ошибка при создании рецепта: {str(e)}"}
+            )
 
     @transaction.atomic
     def update(self, instance, validated_data):
         ingredients = validated_data.pop("ingredients", None)
         tags = validated_data.pop("tags", None)
         validated_data.pop("author", None)
-        instance = super().update(instance, validated_data)
-        through = Recipe.ingredients.through
-        if ingredients is not None:
-            through.objects.filter(recipe=instance).delete()
-            self._create_ingredients(instance, ingredients)
-        if tags is not None:
-            instance.tags.set(tags)
-        return instance
+        logger.debug(f"Updating instance: {instance}, validated_data: {validated_data}")
+        try:
+            instance = super().update(instance, validated_data)
+            through = Recipe.ingredients.through
+            if ingredients is not None:
+                through.objects.filter(recipe=instance).delete()
+                self._create_ingredients(instance, ingredients)
+            if tags is not None:
+                instance.tags.set(tags)
+            return instance
+        except Exception as e:
+            logger.error(f"Unexpected error in update: {str(e)}")
+            raise serializers.ValidationError(
+                {"detail": f"Ошибка при обновлении рецепта: {str(e)}"}
+            )
 
     def to_representation(self, instance):
         return RecipeSerializer(instance, context=self.context).data
