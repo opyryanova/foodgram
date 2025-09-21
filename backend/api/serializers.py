@@ -330,9 +330,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             )
         if value.size > 5 * 1024 * 1024:  # 5MB limit
             logger.error(f"Image too large: {value.size} bytes")
-            raise serializers.ValidationError(
-                'Файл слишком большой. Максимум 5MB.'
-            )
+            raise serializers.ValidationError('Файл слишком большой. Максимум 5MB.')
         return value
 
     def validate(self, data):
@@ -342,24 +340,16 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Нужно указать минимум 1 тег.')
         if not data.get('ingredients'):
             logger.error("No ingredients provided")
-            raise serializers.ValidationError(
-                'Нужно указать минимум 1 ингредиент.'
-            )
+            raise serializers.ValidationError('Нужно указать минимум 1 ингредиент.')
         ingredient_ids = [item['id'].id for item in data.get('ingredients')]
         if len(ingredient_ids) != len(set(ingredient_ids)):
             logger.error("Duplicate ingredients detected")
-            raise serializers.ValidationError(
-                'Ингредиенты должны быть уникальны.'
-            )
+            raise serializers.ValidationError('Ингредиенты должны быть уникальны.')
         name = data.get('name')
         author = self.context['request'].user
         if Recipe.objects.filter(author=author, name=name).exists():
-            logger.error(
-                f"Recipe with name '{name}' already exists for user {author}"
-            )
-            raise serializers.ValidationError(
-                'Рецепт с таким именем уже существует.'
-            )
+            logger.error(f"Recipe with name '{name}' already exists for user {author}")
+            raise serializers.ValidationError('Рецепт с таким именем уже существует.')
         return data
 
     @transaction.atomic
@@ -387,9 +377,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        logger.debug(
-            f"Updating recipe {instance.id} with data: {validated_data}"
-        )
+        logger.debug(f"Updating recipe {instance.id} with data: {validated_data}")
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
         instance = super().update(instance, validated_data)
