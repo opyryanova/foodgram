@@ -164,15 +164,7 @@ function App() {
   };
 
   const getOrders = () => {
-    api
-      .getRecipes({
-        page: 1,
-        is_in_shopping_cart: Number(true),
-      })
-      .then((res) => {
-        const { count } = res;
-        setOrders(count);
-      });
+    api.getUserData().then((me) => setOrders(me.shopping_cart_count ?? 0));
   };
 
   const updateOrders = (add) => {
