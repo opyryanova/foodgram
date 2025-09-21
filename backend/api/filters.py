@@ -59,7 +59,7 @@ class RecipeFilter(django_filters.FilterSet):
         user = getattr(getattr(self, "request", None), "user", None)
         if not user or not user.is_authenticated:
             return queryset
-        return queryset.filter(shoppingcarts__user=user).distinct()
+        return queryset.filter(shopping_recipe__user=user).distinct()
 
 
 class IngredientFilter(django_filters.FilterSet):

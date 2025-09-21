@@ -1,14 +1,7 @@
 from django.db.models import (
     Exists,
-    ExpressionWrapper,
-    F,
-    FloatField,
-    IntegerField,
     OuterRef,
-    Sum,
-    Value,
 )
-from django.db.models.functions import Cast, Ceil, Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views import View
@@ -327,26 +320,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
         url_path="download_shopping_cart",
     )
     def download_shopping_cart(self, request):
-        scale = ExpressionWrapper(
-            Value(1.0)
-            * Coalesce(
-                F("recipe__shoppingcarts__servings"),
-                F("recipe__servings"),
-            )
-            / F("recipe__servings"),
-            output_field=FloatField(),
-        )
-        amount_scaled = ExpressionWrapper(
-            F("amount") * scale, output_field=FloatField()
-        )
         items = (
-            RecipeIngredient.objects.filter(
-                recipe__shoppingcarts__user=request.user
-            )
+            RecipeIngredient.objects
+            .filter(recipe__shopping_recipe__user=request.user)
             .values("ingredient__name", "ingredient__measurement_unit")
-            .annotate(
-                total=Cast(Ceil(Sum(amount_scaled)), IntegerField())
-            )
             .order_by("ingredient__name")
         )
         lines = [
