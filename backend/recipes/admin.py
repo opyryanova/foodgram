@@ -208,7 +208,7 @@ class RecipeAdmin(admin.ModelAdmin):
             .prefetch_related(
                 "tags",
                 "favorites",
-                "shoppingcarts",
+                "shopping_recipe",
                 "recipe_ingredients__ingredient",
             )
         )
