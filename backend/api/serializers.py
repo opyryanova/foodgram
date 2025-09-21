@@ -6,6 +6,7 @@ from django.db.models import Q
 from djoser.serializers import (
     TokenCreateSerializer as DjoserTokenCreateSerializer,
 )
+from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 import logging
@@ -302,7 +303,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
     author = UserInfoSerializer(read_only=True)
     id = serializers.ReadOnlyField()
     ingredients = RecipeIngredientWriteSerializer(many=True)
-    image = serializers.ImageField(required=True)
+    image = Base64ImageField(required=True)
 
     class Meta:
         model = Recipe
@@ -311,28 +312,59 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             'name', 'text', 'cooking_time', 'author'
         )
         extra_kwargs = {
-            'ingredients': {'required': True, 'allow_blank': False},
-            'tags': {'required': True, 'allow_blank': False},
+            'ingredients': {'required': True, 'allow_empty': False},
+            'tags': {'required': True, 'allow_empty': False},
             'name': {'required': True, 'allow_blank': False},
             'text': {'required': True, 'allow_blank': False},
-            'image': {'required': True, 'allow_blank': False},
-            'cooking_time': {'required': True},
+            'image': {'required': True, 'allow_null': False},
+            'cooking_time': {'required': True, 'min_value': 1},
         }
 
-    def validate(self, obj):
-        if not obj.get('tags'):
+    def validate_image(self, value):
+        logger.debug(f"Validating image: content_type={value.content_type}, size={value.size}")
+        allowed_mimes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg']
+        if value.content_type not in allowed_mimes:
+            logger.error(f"Invalid image MIME type: {value.content_type}")
+            raise serializers.ValidationError(
+                f'Недопустимый тип файла: {value.content_type}. Разрешены: {", ".join(allowed_mimes)}.'
+            )
+        if value.size > 5 * 1024 * 1024:  # 5MB limit
+            logger.error(f"Image too large: {value.size} bytes")
+            raise serializers.ValidationError(
+                'Файл слишком большой. Максимум 5MB.'
+            )
+        return value
+
+    def validate(self, data):
+        logger.debug(f"Validating data: {data}")
+        if not data.get('tags'):
+            logger.error("No tags provided")
             raise serializers.ValidationError('Нужно указать минимум 1 тег.')
-        if not obj.get('ingredients'):
+        if not data.get('ingredients'):
+            logger.error("No ingredients provided")
             raise serializers.ValidationError(
-                'Нужно указать минимум 1 ингредиент.')
-        ingredient_ids = [item['id'].id for item in obj.get('ingredients')]
+                'Нужно указать минимум 1 ингредиент.'
+            )
+        ingredient_ids = [item['id'].id for item in data.get('ingredients')]
         if len(ingredient_ids) != len(set(ingredient_ids)):
+            logger.error("Duplicate ingredients detected")
             raise serializers.ValidationError(
-                'Ингредиенты должны быть уникальны.')
-        return obj
+                'Ингредиенты должны быть уникальны.'
+            )
+        name = data.get('name')
+        author = self.context['request'].user
+        if Recipe.objects.filter(author=author, name=name).exists():
+            logger.error(
+                f"Recipe with name '{name}' already exists for user {author}"
+            )
+            raise serializers.ValidationError(
+                'Рецепт с таким именем уже существует.'
+            )
+        return data
 
     @transaction.atomic
     def tags_and_ingredients_set(self, recipe, tags, ingredients):
+        logger.debug(f"Setting tags: {tags}, ingredients: {ingredients}")
         recipe.tags.set(tags)
         RecipeIngredient.objects.bulk_create([
             RecipeIngredient(
@@ -344,15 +376,20 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        logger.debug(f"Creating recipe with data: {validated_data}")
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
         recipe = Recipe.objects.create(
             author=self.context['request'].user, **validated_data)
         self.tags_and_ingredients_set(recipe, tags, ingredients)
+        logger.info(f"Recipe created: {recipe.id}")
         return recipe
 
     @transaction.atomic
     def update(self, instance, validated_data):
+        logger.debug(
+            f"Updating recipe {instance.id} with data: {validated_data}"
+        )
         tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredients')
         instance = super().update(instance, validated_data)
@@ -361,9 +398,11 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             ingredient__in=instance.ingredients.all()
         ).delete()
         self.tags_and_ingredients_set(instance, tags, ingredients)
+        logger.info(f"Recipe updated: {instance.id}")
         return instance
 
     def to_representation(self, instance):
+        from .serializers import RecipeSerializer
         return RecipeSerializer(instance, context=self.context).data
 
 

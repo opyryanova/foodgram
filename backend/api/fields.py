@@ -9,6 +9,7 @@ from typing import Any
 from django.core.files.base import ContentFile
 from PIL import Image, UnidentifiedImageError
 from rest_framework import serializers
+from drf_extra_fields.fields import Base64ImageField
 
 
 class SmartImageField(serializers.ImageField):
